@@ -414,5 +414,90 @@ namespace GFDStudio.GUI.Forms
             }
         }
 
+        private void HandleMakeModelsAnimationsRelativeToolStripMenuItemClick(object sender, EventArgs e)
+        {
+            string newModelDirectoryPath;
+            using (var dialog = new VistaFolderBrowserDialog())
+            {
+                dialog.Description =
+                    "Select a character's new model folder.";
+
+                if (dialog.ShowDialog() != DialogResult.OK)
+                    return;
+
+                newModelDirectoryPath = dialog.SelectedPath;
+            }
+
+            string oldModelDirectoryPath;
+            using (var dialog = new VistaFolderBrowserDialog())
+            {
+                dialog.Description =
+                    "Select the character's original model folder.";
+
+                if (dialog.ShowDialog() != DialogResult.OK)
+                    return;
+
+                oldModelDirectoryPath = dialog.SelectedPath;
+            }
+
+            var failures = new ConcurrentBag<string>();
+
+            foreach (string modelPath in Directory.GetFiles(newModelDirectoryPath))
+            {
+                string originalModelPath = $"{oldModelDirectoryPath}\\{Path.GetFileName(modelPath)}";
+
+                var originalScene = ModuleImportUtilities.ImportFile<Model>(originalModelPath)?.Scene;
+                if (originalScene == null)
+                    return;
+
+                var newScene = ModuleImportUtilities.ImportFile<Model>(modelPath)?.Scene;
+                if (newScene == null)
+                    return;
+
+                string modelCostumeID = Path.GetFileNameWithoutExtension(modelPath).Split('_')[1];
+
+                using (var dialog = new ProgressDialog())
+                {
+                    dialog.DoWork += (o, progress) =>
+                    {
+                        var filePaths = Directory.EnumerateFiles(newModelDirectoryPath, $"*_051_{modelCostumeID}*.GAP", SearchOption.AllDirectories).ToList();
+                        var processedFileCount = 0;
+
+                        Parallel.ForEach(filePaths, (filePath, state) =>
+                        {
+                            lock (dialog)
+                            {
+                                if (dialog.CancellationPending)
+                                {
+                                    state.Stop();
+                                    return;
+                                }
+
+                                dialog.ReportProgress((int)(((float)++processedFileCount / filePaths.Count) * 100),
+                                                       $"Processing {Path.GetFileName(filePath)}", null);
+                            }
+
+                            try
+                            {
+                                var animationPack = Resource.Load<AnimationPack>(filePath);
+                                animationPack.MakeTransformsRelative(originalScene, newScene, false);
+                                animationPack.Save(filePath);
+                            }
+                            catch (Exception ex)
+                            {
+                                failures.Add(filePath);
+                            }
+                        });
+                    };
+
+                    dialog.ShowDialog();
+                }
+            }
+
+            if (failures.Count > 0)
+            {
+                MessageBox.Show("An error occured while processing the following files:\n" + string.Join("\n", failures));
+            }
+        }
     }
 }
