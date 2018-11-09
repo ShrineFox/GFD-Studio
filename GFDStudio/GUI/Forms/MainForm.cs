@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -199,6 +200,52 @@ namespace GFDStudio.GUI.Forms
 
         public void SaveFile( string filePath )
         {
+            var model = (Model)DataTreeView.TopNode.Data;
+
+            //Check if a material's texture is missing
+            foreach (Material material in model.Materials.Materials)
+            {
+                List<string> missingTextures = new List<string>();
+
+                if (material.Flags.HasFlag(MaterialFlags.HasDiffuseMap) && !model.Textures.Keys.Contains(material.DiffuseMap.Name))
+                    missingTextures.Add(material.DiffuseMap.Name);
+                if (material.Flags.HasFlag(MaterialFlags.HasDetailMap) && !model.Textures.Keys.Contains(material.DetailMap.Name))
+                    missingTextures.Add(material.DetailMap.Name);
+                if (material.Flags.HasFlag(MaterialFlags.HasGlowMap) && !model.Textures.Keys.Contains(material.GlowMap.Name))
+                    missingTextures.Add(material.GlowMap.Name);
+                if (material.Flags.HasFlag(MaterialFlags.HasHighlightMap) && !model.Textures.Keys.Contains(material.HighlightMap.Name))
+                    missingTextures.Add(material.HighlightMap.Name);
+                if (material.Flags.HasFlag(MaterialFlags.HasNightMap) && !model.Textures.Keys.Contains(material.NightMap.Name))
+                    missingTextures.Add(material.NightMap.Name);
+                if (material.Flags.HasFlag(MaterialFlags.HasNormalMap) && !model.Textures.Keys.Contains(material.NormalMap.Name))
+                    missingTextures.Add(material.NormalMap.Name);
+                if (material.Flags.HasFlag(MaterialFlags.HasReflectionMap) && !model.Textures.Keys.Contains(material.ReflectionMap.Name))
+                    missingTextures.Add(material.ReflectionMap.Name);
+                if (material.Flags.HasFlag(MaterialFlags.HasShadowMap) && !model.Textures.Keys.Contains(material.ShadowMap.Name))
+                    missingTextures.Add(material.ShadowMap.Name);
+                if (material.Flags.HasFlag(MaterialFlags.HasSpecularMap) && !model.Textures.Keys.Contains(material.SpecularMap.Name))
+                    missingTextures.Add(material.SpecularMap.Name);
+                if (missingTextures.Count > 0)
+                    MessageBox.Show($"Material \"{material.Name}\" references one or more Textures that cannot be found:\n{String.Join("\n",missingTextures.ToArray())}" +
+                        $"\n\nThis will lead to an inevitable crash in-game.", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+            }
+
+            //Check if a geometry's material is missing
+            foreach (var node in model.Scene.Nodes)
+                for (int i = 0; i < node.Attachments.Count; i++)
+                {
+                    var attachment = node.Attachments[i];
+
+                    switch (attachment.Type)
+                    {
+                        case NodeAttachmentType.Geometry:
+                                Geometry geometry = attachment.GetValue<Geometry>();
+                                if (!model.Materials.Keys.Contains(geometry.MaterialName))
+                                    MessageBox.Show($"Scene Geometry under \"{node.Name}\" references a Material that cannot be found:\n{geometry.MaterialName}", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+                            break;
+                    }
+                }
+
             if ( DataTreeView.Nodes.Count > 0 )
                 DataTreeView.TopNode.Export( filePath );
         }
