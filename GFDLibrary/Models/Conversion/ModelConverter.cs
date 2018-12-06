@@ -469,6 +469,27 @@ namespace GFDLibrary.Models.Conversion
             geometry.BoundingSphere = BoundingSphere.Calculate( geometry.BoundingBox.Value, geometry.Vertices );
             geometry.Flags |= GeometryFlags.Flag80000000;
 
+            //Set flags required for P3D/P5D
+            if (options.Version == 0x01105090)
+            {
+                geometry.VertexAttributeFlags = VertexAttributeFlags.Position | VertexAttributeFlags.Normal;
+                if (!geometry.MaterialName.ToLower().Contains("outline"))
+                {
+                    if (geometry.TexCoordsChannel0 != null)
+                    {
+                        geometry.VertexAttributeFlags |= VertexAttributeFlags.TexCoord0;
+                    }
+                    else if (geometry.TexCoordsChannel1 != null)
+                    {
+                        geometry.VertexAttributeFlags |= VertexAttributeFlags.TexCoord1;
+                    }
+                    else if (geometry.TexCoordsChannel2 != null)
+                    {
+                        geometry.VertexAttributeFlags |= VertexAttributeFlags.TexCoord2;
+                    }
+                }
+            }
+
             return geometry;
         }
 
