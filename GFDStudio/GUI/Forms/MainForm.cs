@@ -147,8 +147,8 @@ namespace GFDStudio.GUI.Forms
             }
 
             RecordOpenedFile( filePath );
-            
-            if (node.DataType == typeof(Animation) || node.DataType == typeof(AnimationPack))
+
+            if ( node.DataType == typeof( Animation ) || node.DataType == typeof( AnimationPack ) )
             {
                 mAnimationListTreeView.SetTopNode( node );
             }

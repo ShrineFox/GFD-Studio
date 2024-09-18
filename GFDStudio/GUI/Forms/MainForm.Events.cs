@@ -14,9 +14,9 @@ using GFDStudio.GUI.Controls;
 using GFDStudio.GUI.DataViewNodes;
 using GFDStudio.IO;
 using GFDLibrary.Textures;
-using Ookii.Dialogs;
 using Ookii.Dialogs.Wpf;
 using System.Threading;
+using GFDLibrary.Models;
 
 namespace GFDStudio.GUI.Forms
 {
@@ -723,6 +723,42 @@ namespace GFDStudio.GUI.Forms
             }
 
             mAnimationListTreeView.SetTopNode( node );
+        }
+
+        private void massReplaceAttachmentsToolStripMenuItem_Click( object sender, EventArgs e )
+        {
+            if ( ModelEditorTreeView.TopNode == null || ModelEditorTreeView.TopNode.Data is not ModelPack modelPack )
+                return;
+
+            var selectedModel = ModuleImportUtilities.SelectImportFile<ModelPack>( "Select the model to use Attachments from." )?.Model;
+            if ( selectedModel == null )
+                return;
+
+            var currentModel = (ModelPack)ModelEditorTreeView.TopNode.Data;
+
+            ReplaceAttachmentsInChildNodes( currentModel.Model.RootNode, selectedModel );
+
+            MessageBox.Show("Replaced Attachments successfully.");
+        }
+
+        private void ReplaceAttachmentsInChildNodes( Node node, Model selectedModel )
+        {
+            if ( !node.HasChildren )
+                return;
+
+            for (int i = 0; i < node.Children.Count; i++)
+            {
+                // Recursively check children of this node
+                ReplaceAttachmentsInChildNodes( node.Children[i], selectedModel );
+
+                // If a node exists with the same name in both models (and both nodes have attachments)...
+                if ( selectedModel.Nodes.Any( x => x.Name.Equals( node.Children[i].Name ) && x.HasAttachments ) 
+                    && node.Children[i].HasAttachments )
+                {
+                    // Replace node attachments with ones from selected other file
+                    node.Children[i].Attachments = selectedModel.Nodes.First( x => x.Name.Equals( node.Children[i].Name ) ).Attachments;
+                }
+            }
         }
 
         private void HandleModelAnimationLoaded( object sender, Animation e )
