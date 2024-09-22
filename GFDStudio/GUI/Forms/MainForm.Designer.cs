@@ -55,6 +55,8 @@ namespace GFDStudio.GUI.Forms
             optionsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             retainTexNameToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             retainColorValuesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            useDefaultPresetToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            defaultPresetToolStripComboBox = new System.Windows.Forms.ToolStripComboBox();
             useDarkThemeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             mContentPanel = new System.Windows.Forms.Panel();
             tabControl1 = new MetroSetTabControl();
@@ -71,6 +73,7 @@ namespace GFDStudio.GUI.Forms
             splitContainer_RightSide = new System.Windows.Forms.SplitContainer();
             panel_PropertyGridContainer = new System.Windows.Forms.Panel();
             mPropertyGrid = new System.Windows.Forms.PropertyGrid();
+            autoreplaceAllDefaultMaterialsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             mMainMenuStrip.SuspendLayout();
             tabControl1.SuspendLayout();
             tabPage1.SuspendLayout();
@@ -236,9 +239,9 @@ namespace GFDStudio.GUI.Forms
             // optionsToolStripMenuItem
             // 
             optionsToolStripMenuItem.AutoSize = false;
-            optionsToolStripMenuItem.DropDownItems.AddRange( new System.Windows.Forms.ToolStripItem[] { retainTexNameToolStripMenuItem, retainColorValuesToolStripMenuItem, useDarkThemeToolStripMenuItem } );
+            optionsToolStripMenuItem.DropDownItems.AddRange( new System.Windows.Forms.ToolStripItem[] { retainTexNameToolStripMenuItem, retainColorValuesToolStripMenuItem, useDefaultPresetToolStripMenuItem, useDarkThemeToolStripMenuItem } );
             optionsToolStripMenuItem.Name = "optionsToolStripMenuItem";
-            optionsToolStripMenuItem.Size = new System.Drawing.Size( 75, 24 );
+            optionsToolStripMenuItem.Size = new System.Drawing.Size( 102, 24 );
             optionsToolStripMenuItem.Text = "Options";
             // 
             // retainTexNameToolStripMenuItem
@@ -260,6 +263,25 @@ namespace GFDStudio.GUI.Forms
             retainColorValuesToolStripMenuItem.Size = new System.Drawing.Size( 459, 26 );
             retainColorValuesToolStripMenuItem.Text = "Retain original material's color values when replacing";
             retainColorValuesToolStripMenuItem.CheckedChanged +=  handleRetainColorCheckedChanged ;
+            // 
+            // useDefaultPresetToolStripMenuItem
+            // 
+            useDefaultPresetToolStripMenuItem.Checked = true;
+            useDefaultPresetToolStripMenuItem.CheckOnClick = true;
+            useDefaultPresetToolStripMenuItem.CheckState = System.Windows.Forms.CheckState.Checked;
+            useDefaultPresetToolStripMenuItem.DropDownItems.AddRange( new System.Windows.Forms.ToolStripItem[] { defaultPresetToolStripComboBox, autoreplaceAllDefaultMaterialsToolStripMenuItem } );
+            useDefaultPresetToolStripMenuItem.Name = "useDefaultPresetToolStripMenuItem";
+            useDefaultPresetToolStripMenuItem.Size = new System.Drawing.Size( 459, 26 );
+            useDefaultPresetToolStripMenuItem.Text = "Use selected material preset by default";
+            useDefaultPresetToolStripMenuItem.CheckedChanged +=  useDefaultPresetToolStripMenuItem_CheckedChanged ;
+            // 
+            // defaultPresetToolStripComboBox
+            // 
+            defaultPresetToolStripComboBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            defaultPresetToolStripComboBox.DropDownWidth = 160;
+            defaultPresetToolStripComboBox.Name = "defaultPresetToolStripComboBox";
+            defaultPresetToolStripComboBox.Size = new System.Drawing.Size( 181, 28 );
+            defaultPresetToolStripComboBox.SelectedIndexChanged +=  defaultPresetToolStripComboBox_SelectedIndexChanged ;
             // 
             // useDarkThemeToolStripMenuItem
             // 
@@ -551,6 +573,13 @@ namespace GFDStudio.GUI.Forms
             mPropertyGrid.ViewBorderColor = System.Drawing.Color.FromArgb( 30, 30, 30 );
             mPropertyGrid.ViewForeColor = System.Drawing.Color.Silver;
             // 
+            // autoreplaceAllDefaultMaterialsToolStripMenuItem
+            // 
+            autoreplaceAllDefaultMaterialsToolStripMenuItem.Name = "autoreplaceAllDefaultMaterialsToolStripMenuItem";
+            autoreplaceAllDefaultMaterialsToolStripMenuItem.Size = new System.Drawing.Size( 315, 26 );
+            autoreplaceAllDefaultMaterialsToolStripMenuItem.Text = "Auto-replace all default materials";
+            autoreplaceAllDefaultMaterialsToolStripMenuItem.Click +=  autoreplaceAllDefaultMaterialsToolStripMenuItem_Click ;
+            // 
             // MainForm
             // 
             BackgroundColor = System.Drawing.Color.FromArgb( 30, 30, 30 );
@@ -570,7 +599,7 @@ namespace GFDStudio.GUI.Forms
             ShowLeftRect = false;
             SizeGripStyle = System.Windows.Forms.SizeGripStyle.Show;
             Style = MetroSet_UI.Enums.Style.Dark;
-            Text = "GFD STUDIO";
+            Text = "GFD Studio";
             ThemeName = "MetroDark";
             mMainMenuStrip.ResumeLayout( false );
             mMainMenuStrip.PerformLayout();
@@ -636,5 +665,8 @@ namespace GFDStudio.GUI.Forms
         private System.Windows.Forms.PropertyGrid mPropertyGrid;
         private System.Windows.Forms.SplitContainer splitContainer_LeftSide;
         private System.Windows.Forms.ToolStripMenuItem massReplaceAttachmentsToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem useDefaultPresetToolStripMenuItem;
+        private System.Windows.Forms.ToolStripComboBox defaultPresetToolStripComboBox;
+        private System.Windows.Forms.ToolStripMenuItem autoreplaceAllDefaultMaterialsToolStripMenuItem;
     }
 }

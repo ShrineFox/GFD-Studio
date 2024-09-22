@@ -357,7 +357,7 @@ namespace GFDStudio.GUI.DataViewNodes
 
         private void ConvertToMaterialPreset()
         {
-            using (var dialog = new ModelConverterOptionsDialog(false))
+            using (var dialog = new ModelConverterOptionsDialog(false, new Config() { UseDefaultPreset = false } ))
             {
                 if (dialog.ShowDialog() != DialogResult.OK)
                     return;

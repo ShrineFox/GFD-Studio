@@ -53,7 +53,7 @@ namespace GFDStudio.GUI.DataViewNodes
             base.InitializeCore();
             RegisterReplaceHandler<Assimp.Scene>( path =>
             {
-                using ( var dialog = new ModelConverterOptionsDialog( true ) )
+                using ( var dialog = new ModelConverterOptionsDialog( true, new Config() { UseDefaultPreset = false } ) )
                 {
                     if ( dialog.ShowDialog() != System.Windows.Forms.DialogResult.OK )
                         return Data;

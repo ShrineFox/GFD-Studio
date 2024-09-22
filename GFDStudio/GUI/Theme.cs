@@ -77,6 +77,11 @@ namespace GFDStudio.GUI.Forms
 
                     RecursivelySetColor( item );
                 }
+            else if ( ctrl.GetType() == typeof( ToolStripComboBox ) )
+            {
+                ctrl.BackColor = DarkBG;
+                ctrl.ForeColor = DarkText;
+            }
             else if ( ctrl.GetType() == typeof( ContextMenuStrip ) )
             {
                 if ( MainForm.settings.DarkMode )

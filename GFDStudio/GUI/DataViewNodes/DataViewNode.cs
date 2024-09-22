@@ -8,6 +8,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Forms;
 using GFDLibrary;
+using GFDLibrary.Materials;
 using GFDStudio.DataManagement;
 using GFDStudio.FormatModules;
 using GFDStudio.GUI.Forms;
@@ -265,40 +266,37 @@ namespace GFDStudio.GUI.DataViewNodes
         public void ReplaceProcessing( Type type, object replacement )
         {
             if ( type == typeof( GFDLibrary.Materials.Material ) )
-            {
-                ToolStripMenuItem retainTexName = Forms.MainForm.Instance.retainTexNameToolStripMenuItem;
-                ToolStripMenuItem retainColorValues = Forms.MainForm.Instance.retainColorValuesToolStripMenuItem;
-
-                GFDLibrary.Materials.Material OriginalMat = (GFDLibrary.Materials.Material)Data;
-                GFDLibrary.Materials.Material ReplacementMat = (GFDLibrary.Materials.Material)replacement;
-
-                if ( retainTexName.Checked )
-                {
-                    // Retain original mat's texture names
-                    ReplacementMat.Name = OriginalMat.Name;
-                    if ( OriginalMat.DiffuseMap != null && ReplacementMat.DiffuseMap != null ) ReplacementMat.DiffuseMap.Name = OriginalMat.DiffuseMap.Name;
-                    if ( OriginalMat.NormalMap != null && ReplacementMat.NormalMap != null ) ReplacementMat.NormalMap.Name = OriginalMat.NormalMap.Name;
-                    if ( OriginalMat.SpecularMap != null && ReplacementMat.SpecularMap != null ) ReplacementMat.SpecularMap.Name = OriginalMat.SpecularMap.Name;
-                    if ( OriginalMat.ReflectionMap != null && ReplacementMat.ReflectionMap != null ) ReplacementMat.ReflectionMap.Name = OriginalMat.ReflectionMap.Name;
-                    if ( OriginalMat.HighlightMap != null && ReplacementMat.HighlightMap != null ) ReplacementMat.HighlightMap.Name = OriginalMat.HighlightMap.Name;
-                    if ( OriginalMat.GlowMap != null && ReplacementMat.GlowMap != null ) ReplacementMat.GlowMap.Name = OriginalMat.GlowMap.Name;
-                    if ( OriginalMat.NightMap != null && ReplacementMat.NightMap != null ) ReplacementMat.NightMap.Name = OriginalMat.NightMap.Name;
-                    if ( OriginalMat.DetailMap != null && ReplacementMat.DetailMap != null ) ReplacementMat.DetailMap.Name = OriginalMat.DetailMap.Name;
-                    if ( OriginalMat.ShadowMap != null && ReplacementMat.ShadowMap != null ) ReplacementMat.ShadowMap.Name = OriginalMat.ShadowMap.Name;
-                }
-
-                if ( retainColorValues.Checked )
-                {
-                    ReplacementMat.AmbientColor = OriginalMat.AmbientColor;
-                    ReplacementMat.DiffuseColor = OriginalMat.DiffuseColor;
-                    ReplacementMat.SpecularColor = OriginalMat.SpecularColor;
-                    ReplacementMat.EmissiveColor = OriginalMat.EmissiveColor;
-                }
-
-                replacement = ReplacementMat;
-            }
+                ReplaceMaterial( (Material)Data, (Material)replacement );
 
             Replace( replacement );
+        }
+
+        public void ReplaceMaterial(Material OriginalMat, Material ReplacementMat)
+        {
+            ToolStripMenuItem retainTexName = Forms.MainForm.Instance.retainTexNameToolStripMenuItem;
+            ToolStripMenuItem retainColorValues = Forms.MainForm.Instance.retainColorValuesToolStripMenuItem;
+
+            if ( retainTexName.Checked )
+            {
+                ReplacementMat.Name = OriginalMat.Name;
+                if ( OriginalMat.DiffuseMap != null && ReplacementMat.DiffuseMap != null ) ReplacementMat.DiffuseMap.Name = OriginalMat.DiffuseMap.Name;
+                if ( OriginalMat.NormalMap != null && ReplacementMat.NormalMap != null ) ReplacementMat.NormalMap.Name = OriginalMat.NormalMap.Name;
+                if ( OriginalMat.SpecularMap != null && ReplacementMat.SpecularMap != null ) ReplacementMat.SpecularMap.Name = OriginalMat.SpecularMap.Name;
+                if ( OriginalMat.ReflectionMap != null && ReplacementMat.ReflectionMap != null ) ReplacementMat.ReflectionMap.Name = OriginalMat.ReflectionMap.Name;
+                if ( OriginalMat.HighlightMap != null && ReplacementMat.HighlightMap != null ) ReplacementMat.HighlightMap.Name = OriginalMat.HighlightMap.Name;
+                if ( OriginalMat.GlowMap != null && ReplacementMat.GlowMap != null ) ReplacementMat.GlowMap.Name = OriginalMat.GlowMap.Name;
+                if ( OriginalMat.NightMap != null && ReplacementMat.NightMap != null ) ReplacementMat.NightMap.Name = OriginalMat.NightMap.Name;
+                if ( OriginalMat.DetailMap != null && ReplacementMat.DetailMap != null ) ReplacementMat.DetailMap.Name = OriginalMat.DetailMap.Name;
+                if ( OriginalMat.ShadowMap != null && ReplacementMat.ShadowMap != null ) ReplacementMat.ShadowMap.Name = OriginalMat.ShadowMap.Name;
+            }
+
+            if ( retainColorValues.Checked )
+            {
+                ReplacementMat.AmbientColor = OriginalMat.AmbientColor;
+                ReplacementMat.DiffuseColor = OriginalMat.DiffuseColor;
+                ReplacementMat.SpecularColor = OriginalMat.SpecularColor;
+                ReplacementMat.EmissiveColor = OriginalMat.EmissiveColor;
+            }
         }
 
         public void Replace( object model )

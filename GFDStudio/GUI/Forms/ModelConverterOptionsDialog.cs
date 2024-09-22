@@ -7,6 +7,8 @@ using System.Linq;
 using GFDLibrary;
 using GFDLibrary.Materials;
 using MetroSet_UI.Forms;
+using YamlDotNet.Serialization;
+using System.Collections.Generic;
 
 namespace GFDStudio.GUI.Forms
 {
@@ -14,7 +16,8 @@ namespace GFDStudio.GUI.Forms
     {
 
         private static string PresetLibraryPath = System.IO.Path.GetDirectoryName( Application.ExecutablePath ) + @"\Presets\";
-        private string[] Presets = Directory.GetFiles( PresetLibraryPath, "*.yml" ).Select( file => Path.GetFileName( file ) ).ToArray();
+        private static List<string> Presets = Directory.GetFiles( PresetLibraryPath, "*.yml", SearchOption.TopDirectoryOnly )
+            .Select(x => Path.GetFileNameWithoutExtension(x) ).ToList();
 
         public object MaterialPreset
             => YamlSerializer.LoadYamlFile<Material>( PresetLibraryPath + Presets[MaterialPresetComboBox.SelectedIndex] );
@@ -62,11 +65,6 @@ namespace GFDStudio.GUI.Forms
             get => AutoAddGFDHelperIDsCheckBox.Checked;
         }
 
-        private void RefreshPresetList()
-        {
-            Presets = Directory.GetFiles( PresetLibraryPath, "*.yml" ).Select( file => Path.GetFileName( file ) ).ToArray();
-        }
-
         private void OpenEditPreset( string preset )
         {
             Process PresetEdit = new Process();
@@ -77,7 +75,7 @@ namespace GFDStudio.GUI.Forms
             PresetEdit.Start();
         }
 
-        public ModelConverterOptionsDialog( bool showSceneOptionsOnly )
+        public ModelConverterOptionsDialog( bool showSceneOptionsOnly, Config settings )
         {
             InitializeComponent();
             Theme.Apply( this );
@@ -90,6 +88,8 @@ namespace GFDStudio.GUI.Forms
             else
             {
                 MaterialPresetComboBox.DataSource = Presets;
+                if ( settings .UseDefaultPreset && Presets.Any( x => x.Equals( settings.DefaultPresetName ) ) )
+                    MaterialPresetComboBox.SelectedIndex = Presets.IndexOf( settings.DefaultPresetName );
             }
         }
 

@@ -14,6 +14,8 @@ namespace GFDStudio
         public bool DarkMode { get; set; } = true;
         public bool RetainTextureNames { get; set; } = true;
         public bool RetainMaterialColors { get; set; } = false;
+        public string DefaultPresetName { get; set; } = "P5_Character";
+        public bool UseDefaultPreset { get; set; } = true;
 
         public void SaveJson( Config settings )
         {

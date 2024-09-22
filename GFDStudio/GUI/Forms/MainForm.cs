@@ -1,25 +1,20 @@
 ﻿using System;
-using System.CodeDom;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Windows.Controls;
 using System.Windows.Forms;
 using GFDLibrary;
 using GFDLibrary.Animations;
 using GFDStudio.FormatModules;
 using GFDStudio.GUI.Controls;
 using GFDStudio.GUI.DataViewNodes;
-using MetroSet_UI.Controls;
-using MetroSet_UI.Forms;
-using Control = System.Windows.Forms.Control;
 
 namespace GFDStudio.GUI.Forms
 {
     public partial class MainForm : MetroSet_UI.Forms.MetroSetForm
     {
         public static Config settings = new Config();
+        public static List<string> materialPresets = new List<string>();
 
         private static MainForm sInstance;
         public static MainForm Instance
@@ -52,16 +47,31 @@ namespace GFDStudio.GUI.Forms
             InitializeComponent();
             InitializeState();
             InitializeEvents();
+            ApplySettings();
 
+#if DEBUG
+            //ModelViewControl.Instance.LoadAnimation( Resource.Load<AnimationPack>( 
+            //    @"D:\Modding\Persona 5 EU\Main game\ExtractedClean\data\model\character\0001\field\bf0001_002.GAP" ).Animations[2]);
+#endif
+        }
+
+        private void ApplySettings()
+        {
+            // Apply Theme
             settings = settings.LoadJson();
             Theme.Apply( this );
             retainColorValuesToolStripMenuItem.Checked = settings.RetainMaterialColors;
             retainTexNameToolStripMenuItem.Checked = settings.RetainTextureNames;
             useDarkThemeToolStripMenuItem.Checked = settings.DarkMode;
-#if DEBUG
-            //ModelViewControl.Instance.LoadAnimation( Resource.Load<AnimationPack>( 
-            //    @"D:\Modding\Persona 5 EU\Main game\ExtractedClean\data\model\character\0001\field\bf0001_002.GAP" ).Animations[2]);
-#endif
+            useDefaultPresetToolStripMenuItem.Checked = settings.UseDefaultPreset;
+
+            // Set up Default Material Preset list
+            foreach ( var file in Directory.GetFiles( "./Presets", "*.yml", SearchOption.TopDirectoryOnly ) )
+                materialPresets.Add( Path.GetFileNameWithoutExtension( file ) );
+            foreach ( var fileName in materialPresets )
+                defaultPresetToolStripComboBox.Items.Add( fileName );
+            if ( materialPresets.Any( x => x.Equals( settings.DefaultPresetName ) ) )
+                defaultPresetToolStripComboBox.SelectedIndex = materialPresets.IndexOf( settings.DefaultPresetName );
         }
 
         private void InitializeState()

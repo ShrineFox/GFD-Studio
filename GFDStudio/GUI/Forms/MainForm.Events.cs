@@ -17,6 +17,7 @@ using GFDLibrary.Textures;
 using Ookii.Dialogs.Wpf;
 using System.Threading;
 using GFDLibrary.Models;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.Window;
 
 namespace GFDStudio.GUI.Forms
 {
@@ -322,7 +323,7 @@ namespace GFDStudio.GUI.Forms
             var failures = new ConcurrentBag<string>();
 
             ModelPackConverterOptions option;
-            using (var dialog = new ModelConverterOptionsDialog(false))
+            using (var dialog = new ModelConverterOptionsDialog(false, settings))
             {
                 if (dialog.ShowDialog() != DialogResult.OK)
                     return;
@@ -761,6 +762,63 @@ namespace GFDStudio.GUI.Forms
             }
         }
 
+        private void autoreplaceAllDefaultMaterialsToolStripMenuItem_Click( object sender, EventArgs e )
+        {
+            if ( ModelEditorTreeView.TopNode == null || ModelEditorTreeView.TopNode.Data is not ModelPack modelPack )
+                return;
+
+            string defaultPresetPath = $"./Presets/{settings.DefaultPresetName}.yml";
+            if ( !File.Exists( defaultPresetPath ) )
+            {
+                MessageBox.Show( $"Could not find selected Material Preset at path:\n\n{defaultPresetPath}" );
+                return;
+            }
+
+            var currentModel = (ModelPack)ModelEditorTreeView.TopNode.Data;
+            int replacementCount = 0;
+            for (int i = 0; i < currentModel.Materials.Count(); i++ )
+            {
+                Material ogMaterial = currentModel.Materials.Materials[i];
+                Material newMaterial = YamlSerializer.LoadYamlFile<Material>( defaultPresetPath );
+                if ( newMaterial == null )
+                    return;
+
+                if ( ogMaterial.AmbientColor == new Vector4(1,1,1,1) && ogMaterial.DiffuseColor == new Vector4( 1, 1, 1, 1 )
+                    && ogMaterial.EmissiveColor == new Vector4( 1, 1, 1, 1 ) && ogMaterial.SpecularColor == new Vector4( 1, 1, 1, 1 ) )
+                {
+                    ToolStripMenuItem retainTexName = Instance.retainTexNameToolStripMenuItem;
+                    ToolStripMenuItem retainColorValues = Instance.retainColorValuesToolStripMenuItem;
+
+                    if ( retainTexName.Checked )
+                    {
+                        newMaterial.Name = ogMaterial.Name;
+                        if ( ogMaterial.DiffuseMap != null && newMaterial.DiffuseMap != null ) newMaterial.DiffuseMap.Name = ogMaterial.DiffuseMap.Name;
+                        if ( ogMaterial.NormalMap != null && newMaterial.NormalMap != null ) newMaterial.NormalMap.Name = ogMaterial.NormalMap.Name;
+                        if ( ogMaterial.SpecularMap != null && newMaterial.SpecularMap != null ) newMaterial.SpecularMap.Name = ogMaterial.SpecularMap.Name;
+                        if ( ogMaterial.ReflectionMap != null && newMaterial.ReflectionMap != null ) newMaterial.ReflectionMap.Name = ogMaterial.ReflectionMap.Name;
+                        if ( ogMaterial.HighlightMap != null && newMaterial.HighlightMap != null ) newMaterial.HighlightMap.Name = ogMaterial.HighlightMap.Name;
+                        if ( ogMaterial.GlowMap != null && newMaterial.GlowMap != null ) newMaterial.GlowMap.Name = ogMaterial.GlowMap.Name;
+                        if ( ogMaterial.NightMap != null && newMaterial.NightMap != null ) newMaterial.NightMap.Name = ogMaterial.NightMap.Name;
+                        if ( ogMaterial.DetailMap != null && newMaterial.DetailMap != null ) newMaterial.DetailMap.Name = ogMaterial.DetailMap.Name;
+                        if ( ogMaterial.ShadowMap != null && newMaterial.ShadowMap != null ) newMaterial.ShadowMap.Name = ogMaterial.ShadowMap.Name;
+                    }
+
+                    if ( retainColorValues.Checked )
+                    {
+                        newMaterial.AmbientColor = ogMaterial.AmbientColor;
+                        newMaterial.DiffuseColor = ogMaterial.DiffuseColor;
+                        newMaterial.SpecularColor = ogMaterial.SpecularColor;
+                        newMaterial.EmissiveColor = ogMaterial.EmissiveColor;
+                    }
+
+                    currentModel.Materials.Materials[i] = newMaterial;
+                    replacementCount++;
+                }
+            }
+
+            MessageBox.Show( $"Replaced {replacementCount} Materials." );
+        }
+
         private void HandleModelAnimationLoaded( object sender, Animation e )
         {
             mAnimationTrackBar.Minimum = -1;
@@ -845,7 +903,6 @@ namespace GFDStudio.GUI.Forms
             ModelViewControl.Instance.Invalidate();
         }
 
-
         private void handleRetainColorCheckedChanged( object sender, EventArgs e )
         {
             settings.RetainMaterialColors = retainColorValuesToolStripMenuItem.Checked;
@@ -866,6 +923,19 @@ namespace GFDStudio.GUI.Forms
 
             // Change appearance of form elements
             Theme.Apply( this );
+        }
+
+        private void defaultPresetToolStripComboBox_SelectedIndexChanged( object sender, EventArgs e )
+        {
+            settings.DefaultPresetName = defaultPresetToolStripComboBox.SelectedItem.ToString();
+            settings.SaveJson( settings );
+        }
+
+
+        private void useDefaultPresetToolStripMenuItem_CheckedChanged( object sender, EventArgs e )
+        {
+            settings.UseDefaultPreset = useDefaultPresetToolStripMenuItem.Checked;
+            settings.SaveJson( settings );
         }
     }
 }
