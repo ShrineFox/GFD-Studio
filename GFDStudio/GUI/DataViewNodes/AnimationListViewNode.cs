@@ -1,8 +1,11 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Windows.Forms;
 using GFDLibrary;
 using GFDLibrary.Animations;
+using GFDLibrary.Models;
+using GFDStudio.FormatModules;
 using Ookii.Dialogs;
 using Ookii.Dialogs.Wpf;
 
@@ -36,6 +39,32 @@ namespace GFDStudio.GUI.DataViewNodes
                         animationViewModel.Data.Save( Path.Combine( dialog.SelectedPath, animationViewModel.Text + ".ganm" ) );
                 }
             } );
+            RegisterCustomHandler( "Export", "All (FBX)", () =>
+            {
+                var skeleton = ResolveSkeletonOrPrompt();
+                if ( skeleton == null )
+                    return;
+
+                var dialog = new VistaFolderBrowserDialog();
+                if ( dialog.ShowDialog() != true )
+                    return;
+
+                foreach ( AnimationViewNode animationViewModel in Nodes )
+                {
+                    var animName = animationViewModel.Text;
+                    var fbxPath = Path.Combine( dialog.SelectedPath, animName + ".fbx" );
+                    try
+                    {
+                        AnimationExportHelper.ExportFile( animationViewModel.Data, skeleton, animName, fbxPath );
+                    }
+                    catch ( Exception ex )
+                    {
+                        MessageBox.Show( $"Failed to export {animName}: {ex.Message}", "Error",
+                            MessageBoxButtons.OK, MessageBoxIcon.Error );
+                        return;
+                    }
+                }
+            } );
             RegisterCustomHandler( "Add", "New animation", () =>
             {
                 Data.Add( new Animation() );
@@ -43,6 +72,20 @@ namespace GFDStudio.GUI.DataViewNodes
             } );
 
             base.InitializeCore();
+        }
+
+        private Model ResolveSkeletonOrPrompt()
+        {
+            var ancestor = Parent;
+            while ( ancestor != null )
+            {
+                if ( ancestor is ModelPackViewNode modelPackNode && modelPackNode.Model?.Data != null )
+                    return modelPackNode.Model.Data;
+                ancestor = ancestor.Parent;
+            }
+
+            var modelPack = ModuleImportUtilities.SelectImportFile<ModelPack>( "Select the model containing the skeleton for these animations." );
+            return modelPack?.Model;
         }
     }
 }

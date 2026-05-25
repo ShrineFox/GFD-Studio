@@ -7,6 +7,7 @@ using GFDLibrary.Animations;
 using GFDLibrary.Common;
 using GFDLibrary.Conversion;
 using GFDLibrary.Conversion.AssimpNet;
+using GFDLibrary.Models;
 using GFDStudio.FormatModules;
 using GFDStudio.GUI.TypeConverters;
 
@@ -90,6 +91,13 @@ namespace GFDStudio.GUI.DataViewNodes
         {
             Properties = new VariantUserPropertyList( Data.Properties, () => Properties = mProperties );
             RegisterExportHandler<Animation>( path => Data.Save( path ) );
+            RegisterExportHandler<AssimpScene>( path =>
+            {
+                var skeleton = ResolveSkeletonOrPrompt();
+                if ( skeleton == null )
+                    return;
+                AnimationExportHelper.ExportFile( Data, skeleton, Text, path );
+            } );
             RegisterReplaceHandler<Animation>( Resource.Load<Animation> );
             RegisterReplaceHandler<AssimpScene>( file =>
             {
@@ -131,6 +139,23 @@ namespace GFDStudio.GUI.DataViewNodes
         {
             Controllers = ( ListViewNode<AnimationController> )DataViewNodeFactory.Create( "Controllers", Data.Controllers, new[] { new ListItemNameProvider<AnimationController>( ( x, i ) => x.TargetName ) } );
             AddChildNode( Controllers );
+        }
+
+        private Model ResolveSkeletonOrPrompt()
+        {
+            // try to find animation from model pack
+            //   ModelPackViewNode -> AnimationPackViewNode -> AnimationListViewNode -> AnimationViewNode
+            // Standalone animation files have no modelpack container and will prompt user for a model
+            var container = Parent;
+            while ( container != null )
+            {
+                if ( container is ModelPackViewNode modelPackNode && modelPackNode.Model?.Data != null )
+                    return modelPackNode.Model.Data;
+                container = container.Parent;
+            }
+
+            var modelPack = ModuleImportUtilities.SelectImportFile<ModelPack>( "Select the model containing the skeleton for this animation." );
+            return modelPack?.Model;
         }
 
         private static void ImportModelAndFixTargetIds( Animation animation )

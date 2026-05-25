@@ -323,11 +323,11 @@ namespace GFDLibrary.Models
                 {
                     Properties = reader.ReadResource<UserPropertyDictionary>( Version );
 
-                    Console.WriteLine( Name );
+                    /*Console.WriteLine( Name );
                     foreach ( var item in Properties.Values )
                     {
                         Console.WriteLine( "\t" + item.ToUserPropertyString() );
-                    }
+                    }*/
                 }
             }
 

@@ -16,7 +16,7 @@ namespace GFDStudio.FormatModules
             => "3D Model";
 
         public override string[] Extensions
-            => new[] { "dae", "obj", "fbx", "ascii.fbx" };
+            => new[] { "fbx", "dae", "obj", "ascii.fbx" };
 
         public override FormatModuleUsageFlags UsageFlags
             => FormatModuleUsageFlags.ImportForEditing | FormatModuleUsageFlags.Export;
