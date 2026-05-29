@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 using namespace System;
 using namespace System::Collections::Generic;
@@ -17,8 +17,11 @@ namespace GFDLibrary::Conversion::FbxSdk
 	public ref class FbxSdkModelPackExporterConfig
 	{
 	public:
+		bool ExportAnimation;
+
 		inline FbxSdkModelPackExporterConfig()
 		{
+			ExportAnimation = true;
 		}
 	};
 
@@ -50,6 +53,7 @@ namespace GFDLibrary::Conversion::FbxSdk
 		void ConvertEpl(FbxNode* fbxParentNode, Node^ parentNode, Epl^ mesh, int typeIndex);
 		void ConvertEplLeaf(FbxNode* fbxParentNode, Node^ parentNode, EplLeaf^ mesh, int typeIndex);
 		void ConvertMorph(FbxNode* fbxParentNode, Node^ parentNode, Morph^ mesh, int typeIndex);
+		void BuildAnimationOnExistingScene(GFDLibrary::Animations::Animation^ animation);
 
 		FbxManager* mFbxManager;
 		FbxScene* mFbxScene;
@@ -60,6 +64,7 @@ namespace GFDLibrary::Conversion::FbxSdk
 		List<Node^>^ mModelNodes;
 
 		Dictionary<Node^, IntPtr>^ mNodeToFbxNodeLookup;
+		Dictionary<Node^, IntPtr>^ mNodeToFbxMeshNodeLookup;
 		Dictionary<int, IntPtr>^ mNodeIndexToFbxNodeLookup;
 		Dictionary<int, IntPtr>^ mNodeIndexToFbxClusterLookup;
 		Dictionary<String^, IntPtr>^ mTextureNameToFbxFileTexture;

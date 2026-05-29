@@ -146,6 +146,7 @@ namespace GFDStudio.GUI.DataViewNodes
             // try to find animation from model pack
             //   ModelPackViewNode -> AnimationPackViewNode -> AnimationListViewNode -> AnimationViewNode
             // Standalone animation files have no modelpack container and will prompt user for a model
+            // Priority 1: model pack containing the animation
             var container = Parent;
             while ( container != null )
             {
@@ -154,6 +155,12 @@ namespace GFDStudio.GUI.DataViewNodes
                 container = container.Parent;
             }
 
+            // Priority 2: model currently loaded in the model editor
+            var editorModel = Controls.ModelViewControl.Instance.Model;
+            if ( editorModel != null )
+                return editorModel;
+
+            // Priority 3: prompt the user for a model file
             var modelPack = ModuleImportUtilities.SelectImportFile<ModelPack>( "Select the model containing the skeleton for this animation." );
             return modelPack?.Model;
         }

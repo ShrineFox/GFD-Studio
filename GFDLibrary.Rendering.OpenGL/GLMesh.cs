@@ -27,7 +27,7 @@ namespace GFDLibrary.Rendering.OpenGL
             IsVisible = isVisible;
         }
 
-        public GLMesh( Mesh mesh, Matrix4x4 modelMatrix, List<Bone> bones, List<GLNode> nodes, Dictionary<string, GLBaseMaterial> materials )
+        public GLMesh( Mesh mesh, Matrix4x4 modelMatrix, List<Bone> bones, List<GLNode> nodes, Dictionary<string, GLBaseMaterial> materials, Dictionary<int, float> morphWeights = null )
         {
             Mesh = mesh;
 
@@ -66,6 +66,29 @@ namespace GFDLibrary.Rendering.OpenGL
                     if ( normals != null )
                         normals[i] =
                             Vector3.Normalize( Vector3.TransformNormal( newNormal, modelMatrixInv ) );
+                }
+            }
+
+            if ( morphWeights != null && mesh.MorphTargets != null )
+            {
+                // Make a copy of vertices if we're using the original mesh data
+                if ( mesh.VertexWeights == null )
+                {
+                    var verticesCopy = new Vector3[vertices.Length];
+                    Array.Copy( vertices, verticesCopy, vertices.Length );
+                    vertices = verticesCopy;
+                }
+
+                for ( int t = 0; t < mesh.MorphTargets.Count; t++ )
+                {
+                    if ( !morphWeights.TryGetValue( t, out float weight ) || weight == 0f )
+                        continue;
+
+                    var target = mesh.MorphTargets[t];
+                    for ( int i = 0; i < target.Vertices.Count && i < vertices.Length; i++ )
+                    {
+                        vertices[i] += target.Vertices[i] * weight;
+                    }
                 }
             }
 

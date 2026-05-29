@@ -1,6 +1,7 @@
-#include "pch.h"
+﻿#include "pch.h"
 
 #include "FbxSdkModelPackExporter.h"
+#include "FbxSdkAnimationExporter.h"
 #include "Utf8String.h"
 
 /*
@@ -21,9 +22,8 @@
 	It occasionally returns the wrong matrix, this is a known issue (just google it)
 */
 
-// TODO: 
+// TODO:
 // - cache converted node world transform
-// - export animations
 // - fix vertex colors in max
 // - add unique names to root bones to prevent name clashes?
 
@@ -42,6 +42,7 @@ namespace GFDLibrary::Conversion::FbxSdk
 	using namespace Cameras;
 	using namespace Lights;
 	using namespace Effects;
+	using namespace Animations;
 	using namespace Conversion;
 
 	const double RAD_TO_DEG = 180.0 / Math::PI;
@@ -54,6 +55,7 @@ namespace GFDLibrary::Conversion::FbxSdk
 			throw gcnew Exception("Failed to create FBX Manager");
 
 		mNodeToFbxNodeLookup = gcnew Dictionary<Node^, IntPtr>();
+		mNodeToFbxMeshNodeLookup = gcnew Dictionary<Node^, IntPtr>();
 		mNodeIndexToFbxNodeLookup = gcnew Dictionary<int, IntPtr>();
 		mNodeIndexToFbxClusterLookup = gcnew Dictionary<int, IntPtr>();
 		mTextureNameToFbxFileTexture = gcnew Dictionary<String^, IntPtr>();
@@ -69,6 +71,7 @@ namespace GFDLibrary::Conversion::FbxSdk
 	void FbxSdkModelPackExporter::Reset()
 	{
 		mNodeToFbxNodeLookup->Clear();
+		mNodeToFbxMeshNodeLookup->Clear();
 		mNodeIndexToFbxNodeLookup->Clear();
 		mNodeIndexToFbxClusterLookup->Clear();
 		mTextureNameToFbxFileTexture->Clear();
@@ -445,6 +448,8 @@ namespace GFDLibrary::Conversion::FbxSdk
 		auto fbxMesh = FbxMesh::Create(fbxMeshNode, "");
 		fbxMeshNode->SetNodeAttribute(fbxMesh);
 
+			mNodeToFbxMeshNodeLookup[parentNode] = (IntPtr)fbxMeshNode;
+
 		auto vertices = mesh->Vertices;
 		auto normals = mesh->Normals;
 
@@ -487,6 +492,49 @@ namespace GFDLibrary::Conversion::FbxSdk
 
 		if (mesh->TexCoordsChannel2)
 			ConvertTexCoordChannel(fbxMesh, mesh->TexCoordsChannel2, "UVChannel_3", 2);
+
+		// Morph targets: blend shape deformer BEFORE skin
+		if (mesh->MorphTargets != nullptr && mesh->MorphTargets->Count > 0 && vertices != nullptr && vertices->Length > 0)
+			{
+				int vertexCount = vertices->Length;
+				int morphCount = mesh->MorphTargets->Count;
+				Matrix4x4 morphOffsetTransform = parentNode->WorldTransform;
+				auto meshExportName = ModelConversionHelpers::GetMeshExportName(parentNode->Name, typeIndex);
+				auto fbxBlendShape = FbxBlendShape::Create(mFbxScene, "");
+				for (int t = 0; t < morphCount; t++)
+				{
+					auto morphTarget = mesh->MorphTargets[t];
+					auto morphNodeName = Utf8String(String::Format("{0}_MorphTarget{1}", meshExportName, t));
+					auto fbxMorphNode = FbxNode::Create(mFbxScene, morphNodeName.ToCStr());
+					fbxMorphNode->Visibility.Set(false);
+					fbxParentNode->AddChild(fbxMorphNode);
+					auto fbxMorphMesh = FbxMesh::Create(fbxMorphNode, "");
+					fbxMorphNode->SetNodeAttribute(fbxMorphMesh);
+					fbxMorphMesh->InitControlPoints(vertexCount);
+					auto channelName = Utf8String(String::Format("{0}_MorphTarget{1}", meshExportName, t));
+					auto fbxChannel = FbxBlendShapeChannel::Create(mFbxScene, channelName.ToCStr());
+					auto fbxShape = FbxShape::Create(mFbxScene, channelName.ToCStr());
+					fbxShape->InitControlPoints(vertexCount);
+					int vertsToCopy = Math::Min(vertexCount, morphTarget->Vertices->Count);
+					for (int j = 0; j < vertsToCopy; j++)
+					{
+						auto basePos = vertices[j];
+						auto offset = morphTarget->Vertices[j];
+						auto worldOffset = Vector3::TransformNormal(offset, morphOffsetTransform);
+						Vector3 targetPos = Vector3(basePos.X + worldOffset.X, basePos.Y + worldOffset.Y, basePos.Z + worldOffset.Z);
+						fbxShape->SetControlPointAt(FbxVector4(targetPos.X, targetPos.Y, targetPos.Z), j);
+					}
+					for (int j = vertsToCopy; j < vertexCount; j++)
+					{
+						auto basePos = vertices[j];
+						fbxShape->SetControlPointAt(FbxVector4(basePos.X, basePos.Y, basePos.Z), j);
+					}
+					fbxChannel->AddTargetShape(fbxShape, 100.0);
+					fbxBlendShape->AddBlendShapeChannel(fbxChannel);
+				}
+				if (fbxBlendShape->GetBlendShapeChannelCount() > 0)
+					fbxMesh->AddDeformer(fbxBlendShape);
+			}
 
 		auto fbxSkin = FbxSkin::Create(fbxMesh, "");
 		fbxSkin->SetSkinningType(FbxSkin::EType::eLinear);
@@ -886,6 +934,127 @@ namespace GFDLibrary::Conversion::FbxSdk
 		return mFbxScene;
 	}
 
+	void FbxSdkModelPackExporter::BuildAnimationOnExistingScene(Animation^ animation)
+	{
+		// Build name → FbxNode lookup from the existing object-based lookup
+		auto nameToFbxNodeLookup = gcnew Dictionary<String^, IntPtr>();
+		for each (auto kvp in mNodeToFbxNodeLookup)
+			nameToFbxNodeLookup[kvp.Key->Name] = kvp.Value;
+
+		// Build morph mesh lookup
+		auto morphMeshLookup = gcnew Dictionary<String^, IntPtr>();
+		for each (Node^ node in mModelNodes)
+		{
+			if (!node->HasAttachments)
+				continue;
+
+			int meshTypeIndex = 0;
+			int morphMeshCount = 0;
+			for each (NodeAttachment^ attachment in node->Attachments)
+			{
+				if (attachment->Type != NodeAttachmentType::Mesh)
+					continue;
+
+				auto mesh = safe_cast<Mesh^>(attachment->GetValue());
+				if (mesh->MorphTargets != nullptr && mesh->MorphTargets->Count > 0)
+				{
+					auto meshExportName = ModelConversionHelpers::GetMeshExportName(node->Name, meshTypeIndex);
+					auto fbxMeshNode = mFbxScene->FindNodeByName(Utf8String(meshExportName).ToCStr());
+					if (fbxMeshNode != nullptr)
+					{
+						auto key = String::Format("{0}_mesh{1}", node->Name, morphMeshCount);
+						morphMeshLookup[key] = IntPtr(fbxMeshNode);
+						morphMeshCount++;
+					}
+				}
+				meshTypeIndex++;
+			}
+
+			if (morphMeshCount > 0)
+			{
+				auto countKey = String::Format("{0}_count", node->Name);
+				morphMeshLookup[countKey] = IntPtr(morphMeshCount);
+			}
+		}
+
+		// Create animation
+		auto fbxAnimStack = FbxAnimStack::Create(mFbxScene, "Animation 0");
+		FbxTime start; start.SetSecondDouble(0.0);
+		FbxTime stop; stop.SetSecondDouble(animation->Duration);
+		FbxTimeSpan span(start, stop);
+		fbxAnimStack->SetLocalTimeSpan(span);
+
+		auto fbxAnimLayer = FbxAnimLayer::Create(mFbxScene, "Base Layer");
+		fbxAnimStack->AddMember(fbxAnimLayer);
+
+		// Export node (PRS) controllers
+		for each (AnimationController^ controller in animation->Controllers)
+		{
+			if (controller->TargetKind == TargetKind::Node)
+			{
+				IntPtr fbxNodePtr;
+				if (nameToFbxNodeLookup->TryGetValue(controller->TargetName, fbxNodePtr))
+				{
+					auto fbxNode = (FbxNode*)fbxNodePtr.ToPointer();
+					for each (AnimationLayer^ layer in controller->Layers)
+						FbxSdkAnimationExporter::AddPRSKeysToCurves(fbxNode, fbxAnimLayer, layer);
+				}
+			}
+		}
+
+		// Export morph controllers
+		for each (AnimationController^ controller in animation->Controllers)
+		{
+			if (controller->TargetKind != TargetKind::Morph &&
+				controller->TargetKind != TargetKind::MorphIndexed)
+				continue;
+
+			IntPtr countPtr;
+			int mMeshCount = 0;
+			auto countKey = String::Format("{0}_count", controller->TargetName);
+			if (morphMeshLookup->TryGetValue(countKey, countPtr))
+				mMeshCount = countPtr.ToInt32();
+
+			if (mMeshCount == 0)
+				continue;
+
+			int channelIndex = controller->TargetId;
+
+			for (int m = 0; m < mMeshCount; m++)
+			{
+				auto meshKey = String::Format("{0}_mesh{1}", controller->TargetName, m);
+				IntPtr fbxMeshNodePtr;
+				if (!morphMeshLookup->TryGetValue(meshKey, fbxMeshNodePtr))
+					continue;
+
+				auto fbxMeshNode = (FbxNode*)fbxMeshNodePtr.ToPointer();
+				auto fbxMesh = fbxMeshNode->GetMesh();
+				if (fbxMesh == nullptr)
+					continue;
+
+				FbxBlendShape* fbxBlendShape = nullptr;
+				int deformerCount = fbxMesh->GetDeformerCount();
+				for (int d = 0; d < deformerCount; d++)
+				{
+					auto deformer = fbxMesh->GetDeformer(d);
+					if (deformer->GetDeformerType() == FbxDeformer::EDeformerType::eBlendShape)
+					{
+						fbxBlendShape = static_cast<FbxBlendShape*>(deformer);
+						break;
+					}
+				}
+
+				if (fbxBlendShape == nullptr || channelIndex >= fbxBlendShape->GetBlendShapeChannelCount())
+					continue;
+
+				auto fbxChannel = fbxBlendShape->GetBlendShapeChannel(channelIndex);
+				for each (AnimationLayer^ layer in controller->Layers)
+					FbxSdkAnimationExporter::AddMorphKeysToCurves(fbxChannel, fbxAnimLayer, layer);
+			}
+		}
+
+	}
+
 	void FbxSdkModelPackExporter::ExportFile(ModelPack^ modelPack, String^ path, FbxSdkModelPackExporterConfig^ config)
 	{
 		auto exp = gcnew FbxSdkModelPackExporter();
@@ -916,6 +1085,12 @@ namespace GFDLibrary::Conversion::FbxSdk
 
 		// Create scene
 		auto fbxScene = ConvertToFbxScene(modelPack);
+
+		// Embed animation if the model pack contains one and it's enabled
+		if (mConfig->ExportAnimation &&
+			modelPack->AnimationPack != nullptr && modelPack->AnimationPack->Animations->Count > 0)
+			BuildAnimationOnExistingScene(modelPack->AnimationPack->Animations[0]);
+
 		ExportFbxScene(fbxScene, path);
 	}
 

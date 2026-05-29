@@ -73,6 +73,38 @@ namespace GFDStudio.GUI.DataViewNodes
             {
                 ImportModelAndFixTargetIds(Data);
             });
+            RegisterCustomHandler( "Tools", "Merge...", () =>
+            {
+                using ( var dialog = new OpenFileDialog() )
+                {
+                    dialog.AutoUpgradeEnabled = true;
+                    dialog.CheckFileExists = true;
+                    dialog.CheckPathExists = true;
+                    dialog.Filter = ModuleFilterGenerator.GenerateFilter( new[] { FormatModuleUsageFlags.Import }, typeof( AnimationPack ) ).Filter;
+                    dialog.Multiselect = false;
+                    dialog.SupportMultiDottedExtensions = true;
+                    dialog.Title = "Select an animation pack to merge from";
+                    dialog.ValidateNames = true;
+
+                    if ( dialog.ShowDialog() != DialogResult.OK )
+                        return;
+
+                    try
+                    {
+                        var other = Resource.Load<AnimationPack>( dialog.FileName );
+                        if ( other != null )
+                        {
+                            Data.MergeWith( other );
+                            InitializeView( true );
+                        }
+                    }
+                    catch ( Exception ex )
+                    {
+                        MessageBox.Show( $"Merge failed: {ex.Message}", "Error",
+                            MessageBoxButtons.OK, MessageBoxIcon.Error );
+                    }
+                }
+            } );
         }
 
         protected override void InitializeViewCore()

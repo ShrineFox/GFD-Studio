@@ -76,6 +76,7 @@ namespace GFDStudio.GUI.DataViewNodes
 
         private Model ResolveSkeletonOrPrompt()
         {
+            // Priority 1: model pack containing the animations
             var ancestor = Parent;
             while ( ancestor != null )
             {
@@ -84,6 +85,12 @@ namespace GFDStudio.GUI.DataViewNodes
                 ancestor = ancestor.Parent;
             }
 
+            // Priority 2: model currently loaded in the model editor
+            var editorModel = Controls.ModelViewControl.Instance.Model;
+            if ( editorModel != null )
+                return editorModel;
+
+            // Priority 3: prompt the user for a model file
             var modelPack = ModuleImportUtilities.SelectImportFile<ModelPack>( "Select the model containing the skeleton for these animations." );
             return modelPack?.Model;
         }

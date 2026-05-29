@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Windows.Forms;
@@ -8,6 +9,7 @@ using GFDLibrary.Conversion.AssimpNet;
 using GFDLibrary.Conversion.FbxSdk;
 using GFDLibrary.Misc;
 using GFDStudio.FormatModules;
+using GFDStudio.GUI.Controls;
 using GFDStudio.IO;
 
 namespace GFDStudio.GUI.DataViewNodes
@@ -148,6 +150,39 @@ namespace GFDStudio.GUI.DataViewNodes
             {
                 Data.ChunkType000100F8 = new ChunkType000100F8( Data.Version );
                 InitializeView( true );
+            } );
+            RegisterCustomHandler( "Merge...", () =>
+            {
+                using ( var dialog = new OpenFileDialog() )
+                {
+                    dialog.AutoUpgradeEnabled = true;
+                    dialog.CheckFileExists = true;
+                    dialog.CheckPathExists = true;
+                    dialog.Filter = "Model pack files (*.gmd;*.gfs)|*.gmd;*.gfs";
+                    dialog.Multiselect = false;
+                    dialog.SupportMultiDottedExtensions = true;
+                    dialog.Title = "Select a model pack to merge from";
+                    dialog.ValidateNames = true;
+
+                    if ( dialog.ShowDialog() != DialogResult.OK )
+                        return;
+
+                    try
+                    {
+                        var other = Resource.Load<ModelPack>( dialog.FileName );
+                        if ( other != null )
+                        {
+                            Data.MergeWith( other );
+                            InitializeView( true );
+                            ModelViewControl.Instance.LoadModel( Data );
+                        }
+                    }
+                    catch ( Exception ex )
+                    {
+                        MessageBox.Show( $"Merge failed: {ex.Message}", "Error",
+                            MessageBoxButtons.OK, MessageBoxIcon.Error );
+                    }
+                }
             } );
         }
 

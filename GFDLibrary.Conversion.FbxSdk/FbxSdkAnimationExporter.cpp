@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 
 #include "FbxSdkAnimationExporter.h"
 #include "Utf8String.h"
@@ -6,7 +6,10 @@
 /*
 	FBX ANIMATION EXPORTER NOTES:
 	- Exports a skeleton-only FBX (FbxNode tree with FbxSkeleton::eLimbNode attributes)
-	- Only TargetKind.Node controllers are converted
+	- TargetKind.Node controllers are converted (PRS keys)
+	- TargetKind.Morph / MorphIndexed controllers are converted (SingleKey -> blend shape weight curves)
+	- Morph controllers are SHARED across all meshes on the same node: TargetId directly
+	  indexes into each mesh's own blend shape channels (not split across meshes).
 */
 
 using namespace System;
@@ -18,6 +21,7 @@ namespace GFDLibrary::Conversion::FbxSdk
 {
 	using namespace Models;
 	using namespace Animations;
+	using namespace Conversion;
 
 	static FbxDouble3 ConvertToFbxDouble3(Vector3 value)
 	{
@@ -36,6 +40,9 @@ namespace GFDLibrary::Conversion::FbxSdk
 			throw gcnew FbxSdkAnimationExporterException("Failed to create FBX Manager");
 
 		mNameToFbxNodeLookup = gcnew Dictionary<String^, IntPtr>();
+		mMorphTargetMeshLookup = gcnew Dictionary<String^, IntPtr>();
+
+
 	}
 
 	FbxSdkAnimationExporter::~FbxSdkAnimationExporter()
@@ -46,6 +53,8 @@ namespace GFDLibrary::Conversion::FbxSdk
 	void FbxSdkAnimationExporter::Reset()
 	{
 		mNameToFbxNodeLookup->Clear();
+		mMorphTargetMeshLookup->Clear();
+
 	}
 
 	void FbxSdkAnimationExporter::BuildSkeletonRecursive(FbxNode* fbxParentNode, Node^ node)
@@ -81,14 +90,86 @@ namespace GFDLibrary::Conversion::FbxSdk
 
 	void FbxSdkAnimationExporter::BuildSkeleton(Model^ skeleton)
 	{
-		// Skip the GFD root node itself
 		for each (auto child in skeleton->RootNode->Children)
 			BuildSkeletonRecursive(mFbxScene->GetRootNode(), child);
 	}
 
+	void FbxSdkAnimationExporter::BuildMorphTargetMeshes(Model^ model)
+	{
+		// Create a placeholder mesh node per mesh attachment that has morph targets.
+		// Each placeholder is named EXACTLY like the model FBX mesh node so 3ds Max
+		// matches animation curves to the correct Morpher modifier when merging.
+		for each (Node^ node in model->Nodes)
+		{
+			if (!node->HasAttachments)
+				continue;
+
+			List<Mesh^>^ morphMeshes = gcnew List<Mesh^>();
+			List<int>^ morphMeshTypeIndices = gcnew List<int>();
+			int meshCount = 0;
+			for each (NodeAttachment^ attachment in node->Attachments)
+			{
+				if (attachment->Type == NodeAttachmentType::Mesh)
+				{
+					auto mesh = safe_cast<Mesh^>(attachment->GetValue());
+					if (mesh->MorphTargets != nullptr && mesh->MorphTargets->Count > 0)
+					{
+						morphMeshes->Add(mesh);
+						morphMeshTypeIndices->Add(meshCount);
+					}
+					meshCount++;
+				}
+			}
+
+			if (morphMeshes->Count == 0)
+				continue;
+
+			IntPtr boneFbxNodePtr;
+			FbxNode* fbxBoneNode = nullptr;
+			if (mNameToFbxNodeLookup->TryGetValue(node->Name, boneFbxNodePtr))
+				fbxBoneNode = (FbxNode*)boneFbxNodePtr.ToPointer();
+
+			auto countKey = String::Format("{0}_count", node->Name);
+			mMorphTargetMeshLookup[countKey] = IntPtr(morphMeshes->Count);
+
+			Trace::TraceInformation(String::Format("FbxSdkAnimationExporter: node '{0}' has {1} morph mesh(es)",
+				node->Name, morphMeshes->Count));
+
+			for (int m = 0; m < morphMeshes->Count; m++)
+			{
+				auto mesh = morphMeshes[m];
+				int typeIndex = morphMeshTypeIndices[m];
+				auto meshExportName = ModelConversionHelpers::GetMeshExportName(node->Name, typeIndex);
+
+				auto fbxMeshNode = FbxNode::Create(mFbxScene, Utf8String(meshExportName).ToCStr());
+				if (fbxBoneNode != nullptr)
+					fbxBoneNode->AddChild(fbxMeshNode);
+				else
+					mFbxScene->GetRootNode()->AddChild(fbxMeshNode);
+
+				auto lookupKey = String::Format("{0}_mesh{1}", node->Name, m);
+				mMorphTargetMeshLookup[lookupKey] = (IntPtr)fbxMeshNode;
+
+				auto fbxMesh = FbxMesh::Create(mFbxScene, "");
+				fbxMeshNode->SetNodeAttribute(fbxMesh);
+				fbxMesh->InitControlPoints(1);
+				fbxMesh->SetControlPointAt(FbxVector4(0, 0, 0), 0);
+
+				auto fbxBlendShape = FbxBlendShape::Create(mFbxScene, "");
+				for (int t = 0; t < mesh->MorphTargets->Count; t++)
+				{
+					auto channelName = Utf8String(
+						String::Format("{0}_MorphTarget{1}", meshExportName, t));
+					auto fbxChannel = FbxBlendShapeChannel::Create(mFbxScene, channelName.ToCStr());
+					fbxBlendShape->AddBlendShapeChannel(fbxChannel);
+				}
+				fbxMesh->AddDeformer(fbxBlendShape);
+			}
+		}
+	}
+
 	void FbxSdkAnimationExporter::AddPRSKeysToCurves(FbxNode* fbxNode, FbxAnimLayer* fbxAnimLayer, AnimationLayer^ layer)
 	{
-		// Resolve curve nodes / per-axis curves
 		FbxAnimCurve* tx = nullptr;
 		FbxAnimCurve* ty = nullptr;
 		FbxAnimCurve* tz = nullptr;
@@ -98,6 +179,9 @@ namespace GFDLibrary::Conversion::FbxSdk
 		FbxAnimCurve* sx = nullptr;
 		FbxAnimCurve* sy = nullptr;
 		FbxAnimCurve* sz = nullptr;
+
+		double prevEx = 0.0, prevEy = 0.0, prevEz = 0.0;
+		bool hasFirstRotationKey = false;
 
 		auto positionScale = layer->PositionScale;
 		auto scaleScale = layer->ScaleScale;
@@ -145,14 +229,35 @@ namespace GFDLibrary::Conversion::FbxSdk
 					rz->KeyModifyBegin();
 				}
 
-				// Quaternion -> Euler degrees (XYZ order, FBX default).
 				FbxAMatrix m;
 				m.SetQ(ConvertToFbxQuaternion(prsKey->Rotation));
 				FbxVector4 euler = m.GetR();
+				float ex = (float)euler[0];
+				float ey = (float)euler[1];
+				float ez = (float)euler[2];
 
-				int kx = rx->KeyAdd(time); rx->KeySetValue(kx, (float)euler[0]); rx->KeySetInterpolation(kx, FbxAnimCurveDef::eInterpolationLinear);
-				int ky = ry->KeyAdd(time); ry->KeySetValue(ky, (float)euler[1]); ry->KeySetInterpolation(ky, FbxAnimCurveDef::eInterpolationLinear);
-				int kz = rz->KeyAdd(time); rz->KeySetValue(kz, (float)euler[2]); rz->KeySetInterpolation(kz, FbxAnimCurveDef::eInterpolationLinear);
+				// taken from https://github.com/Pherakki/BlenderToolsForGFS/blob/develop/src/BlenderIO/modelUtilsTest/Skeleton/Transform/Animation/Transform.py#L55
+				// unwraps euler angles to prevent huge jumps i.e. 180 -> -180
+				// this fixes interpolation bug in softwares like 3ds max
+				
+				if (hasFirstRotationKey)
+				{
+					double shiftX = 360.0 * round((prevEx - ex) / 360.0);
+					double shiftY = 360.0 * round((prevEy - ey) / 360.0);
+					double shiftZ = 360.0 * round((prevEz - ez) / 360.0);
+					ex = (float)(ex + shiftX);
+					ey = (float)(ey + shiftY);
+					ez = (float)(ez + shiftZ);
+				}
+
+				prevEx = ex;
+				prevEy = ey;
+				prevEz = ez;
+				hasFirstRotationKey = true;
+
+				int kx = rx->KeyAdd(time); rx->KeySetValue(kx, ex); rx->KeySetInterpolation(kx, FbxAnimCurveDef::eInterpolationLinear);
+				int ky = ry->KeyAdd(time); ry->KeySetValue(ky, ey); ry->KeySetInterpolation(ky, FbxAnimCurveDef::eInterpolationLinear);
+				int kz = rz->KeyAdd(time); rz->KeySetValue(kz, ez); rz->KeySetInterpolation(kz, FbxAnimCurveDef::eInterpolationLinear);
 			}
 
 			if (prsKey->HasScale)
@@ -183,6 +288,39 @@ namespace GFDLibrary::Conversion::FbxSdk
 		if (sx) { sx->KeyModifyEnd(); sy->KeyModifyEnd(); sz->KeyModifyEnd(); }
 	}
 
+	void FbxSdkAnimationExporter::AddMorphKeysToCurves(
+		FbxBlendShapeChannel* fbxChannel,
+		FbxAnimLayer* fbxAnimLayer,
+		AnimationLayer^ layer)
+	{
+		if (!layer->HasSingleKeyFrames)
+			return;
+
+		auto curve = fbxChannel->DeformPercent.GetCurve(fbxAnimLayer, true);
+		if (curve == nullptr)
+			return;
+
+		curve->KeyModifyBegin();
+
+		for each (Key^ baseKey in layer->Keys)
+		{
+			auto singleKey = dynamic_cast<SingleKey^>(baseKey);
+			if (singleKey == nullptr)
+				continue;
+
+			FbxTime time;
+			time.SetSecondDouble(singleKey->Time);
+
+			float weightPercent = singleKey->Value * 100.0f;
+
+			int ki = curve->KeyAdd(time);
+			curve->KeySetValue(ki, weightPercent);
+			curve->KeySetInterpolation(ki, FbxAnimCurveDef::eInterpolationLinear);
+		}
+
+		curve->KeyModifyEnd();
+	}
+
 	void FbxSdkAnimationExporter::BuildAnimation(Animation^ animation, String^ animationName)
 	{
 		auto stackName = Utf8String(animationName);
@@ -196,13 +334,11 @@ namespace GFDLibrary::Conversion::FbxSdk
 		auto fbxAnimLayer = FbxAnimLayer::Create(mFbxScene, "Base Layer");
 		fbxAnimStack->AddMember(fbxAnimLayer);
 
+		// Export node (PRS) controllers
 		for each (AnimationController^ controller in animation->Controllers)
 		{
 			if (controller->TargetKind != TargetKind::Node)
-			{
-				Trace::TraceWarning(String::Format("FbxSdkAnimationExporter: skipping controller with unsupported target kind {0} on '{1}'", controller->TargetKind.ToString(), controller->TargetName));
 				continue;
-			}
 
 			IntPtr fbxNodePtr;
 			if (!mNameToFbxNodeLookup->TryGetValue(controller->TargetName, fbxNodePtr))
@@ -215,8 +351,72 @@ namespace GFDLibrary::Conversion::FbxSdk
 
 			for each (AnimationLayer^ layer in controller->Layers)
 			{
-				// only convert PRS key types, skip keys like Material animation keys
 				AddPRSKeysToCurves(fbxNode, fbxAnimLayer, layer);
+			}
+		}
+
+		// Export morph controllers
+		// Morph controllers are SHARED across all meshes on the same node.
+		// TargetId directly indexes into each mesh's own blend shape channels.
+		// Apply the curve to EVERY mesh that has this channel index.
+		for each (AnimationController^ controller in animation->Controllers)
+		{
+			if (controller->TargetKind != TargetKind::Morph &&
+				controller->TargetKind != TargetKind::MorphIndexed)
+				continue;
+
+			IntPtr countPtr;
+			int mMeshCount = 0;
+			auto countKey = String::Format("{0}_count", controller->TargetName);
+			if (mMorphTargetMeshLookup->TryGetValue(countKey, countPtr))
+				mMeshCount = countPtr.ToInt32();
+
+			if (mMeshCount == 0)
+			{
+				Trace::TraceWarning(
+					String::Format("FbxSdkAnimationExporter: morph target mesh '{0}' not found, skipping controller",
+						controller->TargetName));
+				continue;
+			}
+
+			int channelIndex = controller->TargetId;
+
+			for (int m = 0; m < mMeshCount; m++)
+			{
+				auto meshKey = String::Format("{0}_mesh{1}", controller->TargetName, m);
+				IntPtr fbxMeshNodePtr;
+				if (!mMorphTargetMeshLookup->TryGetValue(meshKey, fbxMeshNodePtr))
+					continue;
+
+				auto fbxMeshNode = (FbxNode*)fbxMeshNodePtr.ToPointer();
+				auto fbxMesh = fbxMeshNode->GetMesh();
+				if (fbxMesh == nullptr)
+					continue;
+
+				FbxBlendShape* fbxBlendShape = nullptr;
+				int deformerCount = fbxMesh->GetDeformerCount();
+				for (int d = 0; d < deformerCount; d++)
+				{
+					auto deformer = fbxMesh->GetDeformer(d);
+					if (deformer->GetDeformerType() == FbxDeformer::EDeformerType::eBlendShape)
+					{
+						fbxBlendShape = static_cast<FbxBlendShape*>(deformer);
+						break;
+					}
+				}
+
+				if (fbxBlendShape == nullptr)
+					continue;
+
+				if (channelIndex < 0 || channelIndex >= fbxBlendShape->GetBlendShapeChannelCount())
+					continue;
+
+				auto fbxChannel = fbxBlendShape->GetBlendShapeChannel(channelIndex);
+
+				for each (AnimationLayer^ layer in controller->Layers)
+				{
+					AddMorphKeysToCurves(fbxChannel, fbxAnimLayer, layer);
+				}
 			}
 		}
 	}
@@ -272,7 +472,7 @@ namespace GFDLibrary::Conversion::FbxSdk
 		fIos->SetBoolProp(EXP_FBX_MATERIAL, false);
 		fIos->SetBoolProp(EXP_FBX_TEXTURE, false);
 		fIos->SetBoolProp(EXP_FBX_EMBEDDED, false);
-		fIos->SetBoolProp(EXP_FBX_SHAPE, false);
+		fIos->SetBoolProp(EXP_FBX_SHAPE, true);
 		fIos->SetBoolProp(EXP_FBX_GOBO, false);
 		fIos->SetBoolProp(EXP_FBX_ANIMATION, true);
 		fIos->SetBoolProp(EXP_FBX_GLOBAL_SETTINGS, true);
@@ -287,7 +487,8 @@ namespace GFDLibrary::Conversion::FbxSdk
 		fbxGlobalSettings.SetSystemUnit(FbxSystemUnit::m);
 
 		BuildSkeleton(skeleton);
-		BuildAnimation(animation, String::IsNullOrEmpty(animationName) ? "Take 001" : animationName);
+		BuildMorphTargetMeshes(skeleton);
+		BuildAnimation(animation, String::IsNullOrEmpty(animationName) ? "Animation 0" : animationName);
 		ExportFbxScene(path);
 	}
 

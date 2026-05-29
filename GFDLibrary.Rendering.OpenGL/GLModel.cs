@@ -23,6 +23,10 @@ namespace GFDLibrary.Rendering.OpenGL
 
         public Animation Animation { get; private set; }
 
+        private List<AnimationController> mMorphControllers = new List<AnimationController>();
+
+        private Dictionary<(string, int), float> mMorphWeights = new Dictionary<(string, int), float>();
+
         public GLModel( ModelPack modelPack, MaterialTextureCreator textureCreator )
         {
             ModelPack = modelPack;
@@ -60,6 +64,10 @@ namespace GFDLibrary.Rendering.OpenGL
                 glNode.Controllers.AddRange( animation.Controllers.Where( x => x.TargetKind == TargetKind.Node &&
                                                                                x.TargetName == glNode.Node.Name ) );
             }
+
+            mMorphControllers.Clear();
+            mMorphControllers.AddRange( animation.Controllers.Where( x => x.TargetKind == TargetKind.Morph ||
+                                                                           x.TargetKind == TargetKind.MorphIndexed ) );
         }
 
         public void UnloadAnimation()
@@ -92,6 +100,9 @@ namespace GFDLibrary.Rendering.OpenGL
                     oldGlMesh.Dispose();
                 }
             }
+
+            mMorphControllers.Clear();
+            mMorphWeights.Clear();
         }
 
         private GLShaderProgram GetTargetShader(ShaderRegistry shaderRegistry, GLMesh glMesh, Matrix4 view, Matrix4 projection, HashSet<ResourceType> shaderPrograms )
@@ -141,7 +152,10 @@ namespace GFDLibrary.Rendering.OpenGL
                     if ( Animation != null && glMesh.Mesh != null )
                     {
                         var oldGlMesh = glMesh;
-                        glMesh = glNode.Meshes[i] = new GLMesh( oldGlMesh.Mesh, glNode.WorldTransform, ModelPack.Model.Bones, Nodes, Materials );
+                        var morphWeights = GetMorphWeightsForNode( glNode.Node );
+                        if ( morphWeights.Count == 0 )
+                            morphWeights = null;
+                        glMesh = glNode.Meshes[i] = new GLMesh( oldGlMesh.Mesh, glNode.WorldTransform, ModelPack.Model.Bones, Nodes, Materials, morphWeights );
                         oldGlMesh.Dispose();
                     }
                     GLShaderProgram targetShader = GetTargetShader( context.ShaderRegistry, glMesh, context.Camera.View, context.Camera.Projection, shaderProgramsInUse );
@@ -257,6 +271,41 @@ namespace GFDLibrary.Rendering.OpenGL
                 glNode.WorldTransform =
                     glNode.Parent == null ? glNode.CurrentTransform : glNode.CurrentTransform * glNode.Parent.WorldTransform;
             }
+
+            // Evaluate morph target weights
+            mMorphWeights.Clear();
+            foreach ( var controller in mMorphControllers )
+            {
+                float weight = 0f;
+
+                foreach ( var layer in controller.Layers )
+                {
+                    if ( !layer.HasSingleKeyFrames )
+                        continue;
+
+                    var (curKey, nextKey) = GetCurrentAndNextKeys( layer, animationTime );
+
+                    if ( curKey is SingleKey singleKey )
+                    {
+                        weight = singleKey.Value;
+
+                        if ( nextKey is SingleKey nextSingleKey )
+                        {
+                            var nextTime = nextSingleKey.Time < singleKey.Time
+                                ? ( nextSingleKey.Time + Animation.Duration )
+                                : nextSingleKey.Time;
+
+                            if ( nextTime > singleKey.Time )
+                            {
+                                var blend = ( float )( ( animationTime - singleKey.Time ) / ( nextTime - singleKey.Time ) );
+                                weight = singleKey.Value + ( nextSingleKey.Value - singleKey.Value ) * blend;
+                            }
+                        }
+                    }
+                }
+
+                mMorphWeights[( controller.TargetName, controller.TargetId )] = weight;
+            }
         }
 
         private void InterpolateKeys( double animationTime, AnimationLayer layer, ref Quaternion rotation, ref Vector3 translation, ref Vector3 scale, PRSKey prsKey, PRSKey nextPrsKey )
@@ -283,6 +332,59 @@ namespace GFDLibrary.Rendering.OpenGL
                                       nextPrsKey.Scale * layer.ScaleScale,
                                       blend );
             }
+        }
+
+        private Dictionary<int, float> GetMorphWeightsForNode( Node node )
+        {
+            var result = new Dictionary<int, float>();
+            foreach ( var kvp in mMorphWeights )
+            {
+                var targetName = kvp.Key.Item1;
+                if ( IsMorphTargetMatch( node.Name, targetName ) )
+                {
+                    result[kvp.Key.Item2] = kvp.Value;
+                }
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Checks whether a node name matches a morph controller target name, accounting for
+        /// atlus trolling where the controller name differs from the model's node name
+        /// </summary>
+        private static bool IsMorphTargetMatch( string nodeName, string targetName )
+        {
+            if ( nodeName == targetName || nodeName.StartsWith( targetName + "_" ) )
+                return true;
+
+            // Known Dancing game body part aliases
+            switch ( targetName )
+            {
+                case "m_face00":
+                case "m_face":
+                case "head_00":
+                    return nodeName == "m_face00" || nodeName == "m_face" || nodeName == "head_00" || nodeName == "m_face_00";
+
+                case "m_face01":
+                case "m_mouth":
+                case "head_01":
+                    return nodeName == "m_face01" || nodeName == "m_mouth" || nodeName == "head_01" || nodeName == "m_face_01";
+
+                case "m_Leye":
+                case "L_eye":
+                    return nodeName == "m_Leye" || nodeName == "L_eye";
+
+                case "m_Reye":
+                case "R_eye":
+                    return nodeName == "m_Reye" || nodeName == "R_eye";
+
+                case "m_mayu00":
+                case "m_mayuge":
+                case "m_blow":
+                    return nodeName == "m_mayu00" || nodeName == "m_mayuge" || nodeName == "m_blow";
+            }
+
+            return false;
         }
 
         private static (Key curKey, Key nextKey) GetCurrentAndNextKeys( AnimationLayer layer, double animationTime )

@@ -71,6 +71,8 @@ namespace GFDStudio.GUI.Controls
 
         public Animation Animation { get; private set; }
 
+        public Model Model => mModel?.ModelPack?.Model;
+
         public bool IsAnimationLoaded => Animation != null;
 
         public AnimationPlaybackState AnimationPlayback
@@ -469,6 +471,10 @@ namespace GFDStudio.GUI.Controls
         public void LoadAnimation( Animation animation, bool reset = true )
         {
             Animation = animation;
+
+            if ( mModel != null )
+                Animation.FixTargetIds( mModel.ModelPack.Model );
+
             mModel?.LoadAnimation( Animation );
 
             AnimationLoaded?.Invoke( this, animation );

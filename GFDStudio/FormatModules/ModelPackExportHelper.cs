@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using System.Windows.Forms;
 using GFDLibrary;
 using GFDLibrary.Conversion.AssimpNet;
 using GFDLibrary.Conversion.FbxSdk;
@@ -12,7 +13,20 @@ namespace GFDStudio.FormatModules
             var ext = Path.GetExtension( path );
             if ( ext.Equals( ".fbx", System.StringComparison.OrdinalIgnoreCase ) )
             {
-                FbxSdkModelPackExporter.ExportFile( modelPack, path, new FbxSdkModelPackExporterConfig() );
+                var config = new FbxSdkModelPackExporterConfig();
+
+                if ( modelPack.AnimationPack != null && modelPack.AnimationPack.Animations.Count > 0 )
+                {
+                    var result = MessageBox.Show(
+                        "Model contains embedded animations. Export model with first animation applied?",
+                        "Export animation",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Question );
+
+                    config.ExportAnimation = result == DialogResult.Yes;
+                }
+
+                FbxSdkModelPackExporter.ExportFile( modelPack, path, config );
             }
             else
             {
