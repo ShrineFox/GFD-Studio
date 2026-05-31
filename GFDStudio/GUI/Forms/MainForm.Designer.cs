@@ -71,6 +71,7 @@ namespace GFDStudio.GUI.Forms
             panel_PropertyGridContainer = new System.Windows.Forms.Panel();
             mPropertyGrid = new System.Windows.Forms.PropertyGrid();
             metaphorSaveReplacedTexturesExternallyToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            catherineFullBodySupportToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             mMainMenuStrip.SuspendLayout();
             tabControl1.SuspendLayout();
             tabPage1.SuspendLayout();
@@ -229,7 +230,7 @@ namespace GFDStudio.GUI.Forms
             // optionsToolStripMenuItem
             // 
             optionsToolStripMenuItem.AutoSize = false;
-            optionsToolStripMenuItem.DropDownItems.AddRange( new System.Windows.Forms.ToolStripItem[] { retainTexNameToolStripMenuItem, retainColorValuesToolStripMenuItem, useDarkThemeToolStripMenuItem, metaphorSaveReplacedTexturesExternallyToolStripMenuItem } );
+            optionsToolStripMenuItem.DropDownItems.AddRange( new System.Windows.Forms.ToolStripItem[] { retainTexNameToolStripMenuItem, retainColorValuesToolStripMenuItem, useDarkThemeToolStripMenuItem, metaphorSaveReplacedTexturesExternallyToolStripMenuItem, catherineFullBodySupportToolStripMenuItem } );
             optionsToolStripMenuItem.Name = "optionsToolStripMenuItem";
             optionsToolStripMenuItem.Size = new System.Drawing.Size( 75, 24 );
             optionsToolStripMenuItem.Text = "Options";
@@ -553,7 +554,17 @@ namespace GFDStudio.GUI.Forms
             metaphorSaveReplacedTexturesExternallyToolStripMenuItem.Size = new System.Drawing.Size( 366, 22 );
             metaphorSaveReplacedTexturesExternallyToolStripMenuItem.Text = "(Metaphor) Save replaced textures externally";
             metaphorSaveReplacedTexturesExternallyToolStripMenuItem.CheckedChanged += handleSaveReplacedTexturesExternally;
-            // 
+            //
+            // catherineFullBodySupportToolStripMenuItem
+            //
+            catherineFullBodySupportToolStripMenuItem.AutoSize = false;
+            catherineFullBodySupportToolStripMenuItem.Checked = false;
+            catherineFullBodySupportToolStripMenuItem.CheckOnClick = true;
+            catherineFullBodySupportToolStripMenuItem.Name = "catherineFullBodySupportToolStripMenuItem";
+            catherineFullBodySupportToolStripMenuItem.Size = new System.Drawing.Size( 459, 26 );
+            catherineFullBodySupportToolStripMenuItem.Text = "Catherine Full Body support";
+            catherineFullBodySupportToolStripMenuItem.CheckedChanged += handleCatherineFullBodySupportCheckedChanged;
+            //
             // MainForm
             // 
             BackgroundColor = System.Drawing.Color.FromArgb( 30, 30, 30 );
@@ -639,5 +650,6 @@ namespace GFDStudio.GUI.Forms
         private System.Windows.Forms.PropertyGrid mPropertyGrid;
         private System.Windows.Forms.SplitContainer splitContainer_LeftSide;
         private System.Windows.Forms.ToolStripMenuItem metaphorSaveReplacedTexturesExternallyToolStripMenuItem;
+        public System.Windows.Forms.ToolStripMenuItem catherineFullBodySupportToolStripMenuItem;
     }
 }

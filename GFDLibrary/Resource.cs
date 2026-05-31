@@ -292,6 +292,12 @@ namespace GFDLibrary
 
         public void Save( Stream stream, bool leaveOpen )
         {
+            if ( ResourceVersion.TreatAsCatherineFullBody &&
+                 ( ResourceType == ResourceType.ModelPack || ResourceType == ResourceType.AnimationPack ) )
+            {
+                Version = ResourceVersion.CatherineFullBody;
+            }
+
             using ( var writer = new ResourceWriter( stream, leaveOpen ) )
             {
                 ResourceType GetResourceType() => Version >= 0x2000000 ? ResourceType.ModelPack_Metaphor : ResourceType.ModelPack;

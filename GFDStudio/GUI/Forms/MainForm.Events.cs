@@ -850,5 +850,12 @@ namespace GFDStudio.GUI.Forms
             settings.SaveReplacedTexturesExternally = metaphorSaveReplacedTexturesExternallyToolStripMenuItem.Checked;
             settings.SaveJson( settings );
         }
+
+        private void handleCatherineFullBodySupportCheckedChanged( object sender, EventArgs e )
+        {
+            settings.CatherineFullBodySupport = catherineFullBodySupportToolStripMenuItem.Checked;
+            ResourceVersion.TreatAsCatherineFullBody = settings.CatherineFullBodySupport;
+            settings.SaveJson( settings );
+        }
     }
 }
