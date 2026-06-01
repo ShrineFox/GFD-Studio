@@ -11,6 +11,7 @@ using GFDLibrary.Textures;
 using OpenTK;
 using OpenTK.Graphics.OpenGL;
 using GFDLibrary.Animations;
+using GFDLibrary.Effects;
 using GFDLibrary.Models;
 using GFDLibrary.Rendering.OpenGL;
 using GFDStudio.DataManagement;
@@ -179,6 +180,7 @@ namespace GFDStudio.GUI.Controls
             mCameraPrimitive = new PrimitiveMesh( "primitives/camera.obj" );
             mLightPrimitive = new PrimitiveMesh( "primitives/light.obj" );
             mEplPrimitive = new PrimitiveMesh( "primitives/epl.obj" );
+
         }
 
         private void DrawLine( Vector3 start, Vector3 end, Vector4 color )
@@ -448,8 +450,42 @@ namespace GFDStudio.GUI.Controls
                             break;
 
                         case NodeAttachmentType.Epl:
-                            glNode.Meshes.Add( mEplPrimitive.Instantiate( true, true, PrimitiveMesh.DefaultColor ) );
+                        {
+                            var epl = attachment.GetValue<Epl>();
+                            int meshCountBefore = mModel.Nodes.Sum( n => n.Meshes.Count );
+                            mModel.AddEplNodes( epl, glNode );
+                            int meshCountAfter = mModel.Nodes.Sum( n => n.Meshes.Count );
+                            int meshesAdded = meshCountAfter - meshCountBefore;
+                            if ( meshesAdded == 0 )
+                            {
+                                Trace.TraceInformation( $"[EPL] Node '{node.Name}': no meshes rendered from EPL, showing wireframe placeholder" );
+                                glNode.Meshes.Add( mEplPrimitive.Instantiate( true, true, PrimitiveMesh.DefaultColor ) );
+                            }
+                            else
+                            {
+                                Trace.TraceInformation( $"[EPL] Node '{node.Name}': rendered {meshesAdded} mesh(es) from EPL" );
+                            }
                             break;
+                        }
+
+                        case NodeAttachmentType.EplLeaf:
+                        {
+                            var eplLeaf = attachment.GetValue<EplLeaf>();
+                            int meshCountBefore = mModel.Nodes.Sum( n => n.Meshes.Count );
+                            mModel.AddEplLeafNodes( eplLeaf, glNode );
+                            int meshCountAfter = mModel.Nodes.Sum( n => n.Meshes.Count );
+                            int meshesAdded = meshCountAfter - meshCountBefore;
+                            if ( meshesAdded == 0 )
+                            {
+                                Trace.TraceInformation( $"[EplLeaf] Node '{node.Name}': no embedded model, showing wireframe placeholder (LeafName='{eplLeaf.Name}', LeafType={eplLeaf.Data?.GetType().Name})" );
+                                glNode.Meshes.Add( mEplPrimitive.Instantiate( true, true, PrimitiveMesh.DefaultColor ) );
+                            }
+                            else
+                            {
+                                Trace.TraceInformation( $"[EplLeaf] Node '{node.Name}': rendered {meshesAdded} mesh(es) from embedded model (LeafName='{eplLeaf.Name}')" );
+                            }
+                            break;
+                        }
                     }
                 }
             }

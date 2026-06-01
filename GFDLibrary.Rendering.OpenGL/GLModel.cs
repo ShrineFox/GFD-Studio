@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
 using GFDLibrary.Animations;
+using GFDLibrary.Effects;
 using GFDLibrary.Materials;
 using GFDLibrary.Models;
 using OpenTK;
@@ -51,6 +52,179 @@ namespace GFDLibrary.Rendering.OpenGL
                     var glMesh = new GLMesh( attachment.GetValue<Mesh>(), glNode.Node.WorldTransform, modelPack.Model.Bones, Nodes, Materials );
                     glNode.Meshes.Add( glMesh );
                 }
+            }
+        }
+
+        public void AddEplNodes( Epl epl, GLNode parentGlNode )
+        {
+            Trace.WriteLine( $"[GLModel.AddEplNodes] EPL RootNode='{epl.RootNode.Name}', Children={epl.RootNode.ChildCount}, HasAttachments={epl.RootNode.HasAttachments}, AttachPt='{parentGlNode.Node.Name}'" );
+
+            foreach ( var child in epl.RootNode.Children )
+            {
+                AddEplNodeRecursive( child, parentGlNode );
+            }
+
+            // Also process attachments on the root node itself
+            if ( epl.RootNode.HasAttachments )
+            {
+                ProcessEplNodeAttachments( epl.RootNode, parentGlNode );
+            }
+        }
+
+        private void AddEplNodeRecursive( Node eplNode, GLNode parentGlNode )
+        {
+            var glNode = new GLNode( eplNode );
+            glNode.Parent = parentGlNode;
+
+            // Recalculate world transform based on the GLNode parent chain (not the EPL Node tree)
+            var transform = Matrix4x4.CreateFromQuaternion( glNode.Node.Rotation ) * Matrix4x4.CreateScale( glNode.Node.Scale );
+            transform.Translation = glNode.Node.Translation;
+            glNode.CurrentTransform = transform;
+            glNode.WorldTransform = glNode.CurrentTransform * glNode.Parent.WorldTransform;
+
+            Nodes.Add( glNode );
+
+            Trace.WriteLine( $"[GLModel] EPL node '{eplNode.Name}' parented to '{parentGlNode.Node.Name}', Attachments={eplNode.AttachmentCount}, Children={eplNode.ChildCount}, WorldPos={glNode.WorldTransform.Translation}" );
+
+            ProcessEplNodeAttachments( eplNode, glNode );
+
+            foreach ( var child in eplNode.Children )
+            {
+                AddEplNodeRecursive( child, glNode );
+            }
+        }
+
+        private void ProcessEplNodeAttachments( Node eplNode, GLNode glNode )
+        {
+            if ( !eplNode.HasAttachments )
+                return;
+
+            foreach ( var attachment in eplNode.Attachments )
+            {
+                switch ( attachment.Type )
+                {
+                    case NodeAttachmentType.Mesh:
+                    {
+                        var glMesh = new GLMesh( attachment.GetValue<Mesh>(), glNode.WorldTransform, ModelPack.Model.Bones, Nodes, Materials );
+                        glNode.Meshes.Add( glMesh );
+                        break;
+                    }
+                    case NodeAttachmentType.Epl:
+                    {
+                        AddEplNodes( attachment.GetValue<Epl>(), glNode );
+                        break;
+                    }
+                    case NodeAttachmentType.EplLeaf:
+                    {
+                        AddEplLeafModel( attachment.GetValue<EplLeaf>(), glNode );
+                        break;
+                    }
+                }
+            }
+        }
+
+        public void AddEplLeafNodes( EplLeaf eplLeaf, GLNode glNode )
+        {
+            AddEplLeafModel( eplLeaf, glNode );
+        }
+
+        private void AddEplLeafModel( EplLeaf eplLeaf, GLNode attachmentGlNode )
+        {
+            var embeddedModelPack = TryLoadModelPackFromEplLeaf( eplLeaf );
+            if ( embeddedModelPack == null )
+                return;
+
+            Trace.WriteLine( $"[GLModel.AddEplLeafModel] Loaded embedded ModelPack, Nodes={embeddedModelPack.Model.Nodes.Count()}, Materials={embeddedModelPack.Materials?.Count ?? 0}, Textures={embeddedModelPack.Textures?.Count ?? 0}" );
+
+            // Merge embedded materials into main Materials dictionary
+            if ( embeddedModelPack.Materials != null && embeddedModelPack.Textures != null )
+            {
+                foreach ( var kvp in embeddedModelPack.Materials )
+                {
+                    if ( !Materials.ContainsKey( kvp.Key ) )
+                    {
+                        var glMaterial = GLBaseMaterial.CreateGLMaterial( kvp.Value, ( material, textureName ) =>
+                        {
+                            if ( embeddedModelPack.Textures.TryGetTexture( textureName, out var texture ) )
+                                return new GLTexture( texture );
+                            return null;
+                        } );
+                        Materials[kvp.Key] = glMaterial;
+                        Trace.WriteLine( $"[GLModel.AddEplLeafModel] Added embedded material '{kvp.Key}'" );
+                    }
+                }
+            }
+
+            // Walk the embedded model's node tree and create GLNodes + GLMeshes
+            var embeddedRootNode = embeddedModelPack.Model.RootNode;
+            if ( embeddedRootNode.HasAttachments )
+                AddEmbeddedNodeAttachments( embeddedRootNode, attachmentGlNode, embeddedModelPack );
+
+            foreach ( var child in embeddedRootNode.Children )
+            {
+                AddEmbeddedNodeRecursive( child, attachmentGlNode, embeddedModelPack );
+            }
+        }
+
+        private void AddEmbeddedNodeRecursive( Node embeddedNode, GLNode parentGlNode, ModelPack embeddedModelPack )
+        {
+            var glNode = new GLNode( embeddedNode );
+            glNode.Parent = parentGlNode;
+
+            var transform = Matrix4x4.CreateFromQuaternion( glNode.Node.Rotation ) * Matrix4x4.CreateScale( glNode.Node.Scale );
+            transform.Translation = glNode.Node.Translation;
+            glNode.CurrentTransform = transform;
+            glNode.WorldTransform = glNode.CurrentTransform * glNode.Parent.WorldTransform;
+
+            Nodes.Add( glNode );
+
+            AddEmbeddedNodeAttachments( embeddedNode, glNode, embeddedModelPack );
+
+            foreach ( var child in embeddedNode.Children )
+            {
+                AddEmbeddedNodeRecursive( child, glNode, embeddedModelPack );
+            }
+        }
+
+        private void AddEmbeddedNodeAttachments( Node embeddedNode, GLNode glNode, ModelPack embeddedModelPack )
+        {
+            if ( !embeddedNode.HasAttachments )
+                return;
+
+            foreach ( var attachment in embeddedNode.Attachments )
+            {
+                if ( attachment.Type == NodeAttachmentType.Mesh )
+                {
+                    var mesh = attachment.GetValue<Mesh>();
+                    Trace.WriteLine( $"[GLModel] Embedded mesh on node '{embeddedNode.Name}': Material='{mesh.MaterialName}', Vertices={mesh.VertexCount}, Triangles={mesh.TriangleCount}" );
+                    var glMesh = new GLMesh( mesh, glNode.WorldTransform, embeddedModelPack.Model.Bones, Nodes, Materials );
+                    glNode.Meshes.Add( glMesh );
+                }
+            }
+        }
+
+        private static ModelPack TryLoadModelPackFromEplLeaf( EplLeaf eplLeaf )
+        {
+            if ( eplLeaf.Data is not EplModel eplModel )
+            {
+                Trace.WriteLine( $"[GLModel.TryLoadModelPackFromEplLeaf] EplLeaf.Data is not EplModel, it's {eplLeaf.Data?.GetType().Name}" );
+                return null;
+            }
+
+            Trace.WriteLine( $"[GLModel.TryLoadModelPackFromEplLeaf] EplModel: HasEmbeddedFile={eplModel.HasEmbeddedFile}, EmbeddedFile.FileName='{eplModel.EmbeddedFile?.FileName}', DataLen={eplModel.EmbeddedFile?.DataLength}" );
+
+            if ( eplModel.HasEmbeddedFile != 1 || eplModel.EmbeddedFile?.Data == null || eplModel.EmbeddedFile.Data.Length == 0 )
+                return null;
+
+            try
+            {
+                using var stream = new System.IO.MemoryStream( eplModel.EmbeddedFile.Data );
+                return Resource.Load<ModelPack>( stream );
+            }
+            catch ( Exception ex )
+            {
+                Trace.WriteLine( $"[GLModel.TryLoadModelPackFromEplLeaf] Failed to parse as ModelPack: {ex.Message}" );
+                return null;
             }
         }
 
