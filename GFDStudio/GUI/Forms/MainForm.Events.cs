@@ -806,6 +806,14 @@ namespace GFDStudio.GUI.Forms
 
         private void HandleModelAnimationLoaded( object sender, Animation e )
         {
+            var modelViewControl = ModelViewControl.Instance;
+
+            // When a blend animation is loaded while a non-blend animation is already playing,
+            // keep the base animation's timeline — the blend animation's (potentially shorter)
+            // duration should not shrink the trackbar Maximum.
+            if ( e.IsBlendAnimation && modelViewControl.Animation != null && modelViewControl.Animation.Duration > 0 )
+                return;
+
             mAnimationTrackBar.Minimum = -1;
             mAnimationTrackBar.Maximum = ( int ) ( e.Duration * 1000 );
         }

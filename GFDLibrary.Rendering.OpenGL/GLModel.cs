@@ -461,7 +461,19 @@ namespace GFDLibrary.Rendering.OpenGL
                         Key curKey = null;
                         Key nextKey = null;
 
-                        (curKey, nextKey) = GetCurrentAndNextKeys( layer, animationTime );
+                        var blendDuration = BlendAnimation.Duration;
+
+                        // When animationTime exceeds the blend animation's duration, hold the
+                        // last keyframe rather than wrapping around and interpolating garbage.
+                        if ( blendDuration > 0 && animationTime >= blendDuration )
+                        {
+                            // Find the last key in the layer and apply it directly (no interpolation)
+                            curKey = layer.Keys.LastOrDefault();
+                        }
+                        else
+                        {
+                            (curKey, nextKey) = GetCurrentAndNextKeys( layer, animationTime );
+                        }
 
                         if ( curKey != null && layer.HasPRSKeyFrames )
                         {
@@ -548,7 +560,23 @@ namespace GFDLibrary.Rendering.OpenGL
                 ? ( nextPrsKey.Time + duration )
                 : nextPrsKey.Time );
 
-            var blend = ( float ) ( animationTime / nextTime );
+            var segmentLength = nextTime - prsKey.Time;
+            if ( segmentLength <= 0 )
+            {
+                // Degenerate segment — just use the current key's values directly
+                if ( prsKey.HasRotation )
+                    rotation = prsKey.Rotation;
+
+                if ( prsKey.HasPosition )
+                    translation = prsKey.Position * layer.PositionScale;
+
+                if ( prsKey.HasScale )
+                    scale = prsKey.Scale * layer.ScaleScale;
+
+                return;
+            }
+
+            var blend = ( float ) ( ( animationTime - prsKey.Time ) / segmentLength );
 
             if ( prsKey.HasRotation )
                 rotation = Quaternion.Slerp( prsKey.Rotation, nextPrsKey.Rotation, blend );

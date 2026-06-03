@@ -544,7 +544,9 @@ namespace GFDStudio.GUI.Controls
             if ( animation.Duration > 0 )
                 AnimationLoaded?.Invoke( this, animation );
 
-            if ( reset )
+            var hasActiveNonBlendAnimation = Animation != null && Animation.Duration > 0;
+
+            if ( reset && !hasActiveNonBlendAnimation )
             {
                 AnimationTime = 0;
                 AnimationPlayback = AnimationPlaybackState.Playing;
@@ -603,7 +605,9 @@ namespace GFDStudio.GUI.Controls
 
             if ( AnimationPlayback == AnimationPlaybackState.Playing )
             {
-                var activeAnimation = ( BlendAnimation != null && BlendAnimation.Duration > 0 ) ? BlendAnimation : Animation;
+                var activeAnimation = ( Animation != null && Animation.Duration > 0 )
+                    ? Animation
+                    : ( BlendAnimation != null && BlendAnimation.Duration > 0 ) ? BlendAnimation : null;
                 if ( activeAnimation != null )
                 {
                     var nextAnimationTime = AnimationTime + ( deltaTime * activeAnimation.Speed.GetValueOrDefault( 1f ) );
