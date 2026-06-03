@@ -25,15 +25,24 @@ out vec4 fColor0;
 uniform mat4 uModel;
 uniform mat4 uView;
 uniform mat4 uProjection;
+uniform vec4 uUVTransform;
+uniform float uUVRotation;
 
 void main() {
     mat4 uModelView = uView * uModel;
     fPosition = (uModelView * vec4(vPosition, 1.0)).xyz;
     fNormal = vNormal.xyz;
     fFacingNormal = (uModelView * vec4(vNormal, 0.0)).xyz;
-    fTex0 = vTex0;
+
+    // UV animation: scale, then rotate, then offset (starting from 0,0 origin)
+    vec2 uv = vTex0 * uUVTransform.zw;
+    float s = sin(uUVRotation);
+    float c = cos(uUVRotation);
+    uv = vec2(uv.x * c - uv.y * s, uv.x * s + uv.y * c);
+    fTex0 = uv + vec2( -uUVTransform.x, uUVTransform.y );
     fTex1 = vTex1;
     fTex2 = vTex2;
+
     fColor0 = vColor0;
     gl_Position = uProjection * uModelView * vec4(vPosition, 1.0);
 }

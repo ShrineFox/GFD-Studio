@@ -47,6 +47,11 @@ namespace GFDLibrary.Rendering.OpenGL
         public bool RenderWireframe { get; set; }
         public bool EnableBackfaceCulling { get; set; }
 
+        public float AnimatedAlpha { get; set; } = 1.0f;
+        public System.Numerics.Vector2 UVOffset { get; set; }
+        public System.Numerics.Vector2 UVScale { get; set; } = System.Numerics.Vector2.One;
+        public float UVRotation { get; set; }
+
         public GLBaseMaterial()
         {
         }
@@ -309,7 +314,11 @@ namespace GFDLibrary.Rendering.OpenGL
         {
             base.Bind( shaderProgram );
             shaderProgram.SetUniform( "uMatAmbient", Ambient );
-            shaderProgram.SetUniform( "uMatDiffuse", Diffuse );
+
+            var diffuseWithAnim = Diffuse;
+            diffuseWithAnim.W *= AnimatedAlpha;
+            shaderProgram.SetUniform( "uMatDiffuse", diffuseWithAnim );
+
             shaderProgram.SetUniform( "uMatSpecular", Specular );
             shaderProgram.SetUniform( "uMatEmissive", Emissive );
             shaderProgram.SetUniform( "uMatReflectivity", Reflectivity );
@@ -323,8 +332,12 @@ namespace GFDLibrary.Rendering.OpenGL
             shaderProgram.SetUniform( "uMatToonShadowBrightness", ToonShadowBrightness );
             shaderProgram.SetUniform( "uMatToonShadowThreshold", ToonShadowThreshold );
             shaderProgram.SetUniform( "uMatToonShadowFactor", ToonShadowFactor );
+
+            shaderProgram.SetUniform( "uUVTransform", new OpenTK.Vector4(
+                UVOffset.X, UVOffset.Y, UVScale.X, UVScale.Y ) );
+            shaderProgram.SetUniform( "uUVRotation", UVRotation );
         }
-        public override bool IsMaterialTransparent() => DrawMethod != 0 || ( DrawMethod == 0 && Diffuse.W < 1.0 );
+        public override bool IsMaterialTransparent() => DrawMethod != 0 || ( DrawMethod == 0 && ( Diffuse.W * AnimatedAlpha < 1.0 ) );
     }
 
     public class GLMetaphorMaterial : GLBaseMaterial
@@ -353,6 +366,10 @@ namespace GFDLibrary.Rendering.OpenGL
                     shaderProgram.SetUniform( prop.GetCustomAttribute<ShaderUniformAttribute>().Uniform, (int)prop.GetValue( ParameterSet ) );
                 }
             }
+
+            shaderProgram.SetUniform( "uUVTransform", new OpenTK.Vector4(
+                UVOffset.X, UVOffset.Y, UVScale.X, UVScale.Y ) );
+            shaderProgram.SetUniform( "uUVRotation", UVRotation );
         }
         public override bool IsMaterialTransparent() => ParameterSet.IsMaterialTransparent();
     }

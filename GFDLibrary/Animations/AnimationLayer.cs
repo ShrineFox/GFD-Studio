@@ -87,6 +87,24 @@ namespace GFDLibrary.Animations
             }
         }
 
+        public bool HasSingle5KeyFrames
+        {
+            get
+            {
+                switch ( KeyType )
+                {
+                    case KeyType.Single5:
+                    case KeyType.Single5_2:
+                    case KeyType.Single5Alt:
+                    case KeyType.Type36_P5R:
+                        return true;
+
+                    default:
+                        return false;
+                }
+            }
+        }
+
         public AnimationLayer(uint version) : base(version)
         {
             Keys = new List< Key >();

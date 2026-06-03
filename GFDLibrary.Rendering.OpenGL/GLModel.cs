@@ -28,6 +28,8 @@ namespace GFDLibrary.Rendering.OpenGL
 
         private List<AnimationController> mMorphControllers = new List<AnimationController>();
 
+        private List<AnimationController> mMaterialControllers = new List<AnimationController>();
+
         private Dictionary<(string, int), float> mMorphWeights = new Dictionary<(string, int), float>();
 
         public GLModel( ModelPack modelPack, MaterialTextureCreator textureCreator )
@@ -244,6 +246,9 @@ namespace GFDLibrary.Rendering.OpenGL
             mMorphControllers.Clear();
             mMorphControllers.AddRange( animation.Controllers.Where( x => x.TargetKind == TargetKind.Morph ||
                                                                            x.TargetKind == TargetKind.MorphIndexed ) );
+
+            mMaterialControllers.Clear();
+            mMaterialControllers.AddRange( animation.Controllers.Where( x => x.TargetKind == TargetKind.Material ) );
         }
 
         public void LoadBlendAnimation( Animation animation )
@@ -293,6 +298,15 @@ namespace GFDLibrary.Rendering.OpenGL
 
             mMorphControllers.Clear();
             mMorphWeights.Clear();
+
+            mMaterialControllers.Clear();
+            foreach ( var material in Materials.Values )
+            {
+                material.AnimatedAlpha = 1.0f;
+                material.UVOffset = System.Numerics.Vector2.Zero;
+                material.UVScale = System.Numerics.Vector2.One;
+                material.UVRotation = 0f;
+            }
         }
 
         private GLShaderProgram GetTargetShader(ShaderRegistry shaderRegistry, GLMesh glMesh, Matrix4 view, Matrix4 projection, HashSet<ResourceType> shaderPrograms )
@@ -551,6 +565,84 @@ namespace GFDLibrary.Rendering.OpenGL
                 }
 
                 mMorphWeights[( controller.TargetName, controller.TargetId )] = weight;
+            }
+
+            // check for material animations
+            foreach ( var controller in mMaterialControllers )
+            {
+                if ( !Materials.TryGetValue( controller.TargetName, out var material ) )
+                    continue;
+
+                foreach ( var layer in controller.Layers )
+                {
+                    if ( layer.HasSingleKeyFrames && layer.KeyType == KeyType.MaterialSingle_4 )
+                    {
+                        // check Diffusivity flag (bit 6) for alpha animation
+                        if ( ( material.MatFlags & ( 1 << 6 ) ) == 0 )
+                            continue;
+
+                        var (curKey, nextKey) = GetCurrentAndNextKeys( layer, animationTime );
+
+                        if ( curKey is SingleKey singleKey )
+                        {
+                            float alpha = singleKey.Value;
+
+                            if ( nextKey is SingleKey nextSingleKey )
+                            {
+                                var nextTime = nextSingleKey.Time < singleKey.Time
+                                    ? ( nextSingleKey.Time + Animation.Duration )
+                                    : nextSingleKey.Time;
+
+                                if ( nextTime > singleKey.Time )
+                                {
+                                    var blend = ( float )( ( animationTime - singleKey.Time ) / ( nextTime - singleKey.Time ) );
+                                    alpha = singleKey.Value + ( nextSingleKey.Value - singleKey.Value ) * blend;
+                                }
+                            }
+
+                            material.AnimatedAlpha = alpha;
+                        }
+                    }
+                    else if ( layer.HasSingle5KeyFrames )
+                    {
+                        //  check HasUVAnimation flag (bit 7) for UV Animations
+                        if ( ( material.MatFlags & ( 1 << 7 ) ) == 0 )
+                            continue;
+
+                        var (curKey, nextKey) = GetCurrentAndNextKeys( layer, animationTime );
+
+                        if ( curKey is Single5Key single5Key )
+                        {
+                            float offsetX = single5Key.UVOffsetX;
+                            float offsetY = single5Key.UVOffsetY;
+                            float scaleX  = single5Key.UVScaleX;
+                            float scaleY  = single5Key.UVScaleY;
+                            float rot     = single5Key.UVRotation;
+
+                            // Single5 and Single5_2 have interpolation; Single5Alt does not
+                            if ( ( layer.KeyType == KeyType.Single5_2 || layer.KeyType == KeyType.Single5 ) && nextKey is Single5Key nextSingle5Key )
+                            {
+                                var nextTime = nextSingle5Key.Time < single5Key.Time
+                                    ? ( nextSingle5Key.Time + Animation.Duration )
+                                    : nextSingle5Key.Time;
+
+                                if ( nextTime > single5Key.Time )
+                                {
+                                    var blend = ( float )( ( animationTime - single5Key.Time ) / ( nextTime - single5Key.Time ) );
+                                    offsetX = single5Key.UVOffsetX + ( nextSingle5Key.UVOffsetX - single5Key.UVOffsetX ) * blend;
+                                    offsetY = single5Key.UVOffsetY + ( nextSingle5Key.UVOffsetY - single5Key.UVOffsetY ) * blend;
+                                    scaleX  = single5Key.UVScaleX  + ( nextSingle5Key.UVScaleX  - single5Key.UVScaleX  ) * blend;
+                                    scaleY  = single5Key.UVScaleY  + ( nextSingle5Key.UVScaleY  - single5Key.UVScaleY  ) * blend;
+                                    rot     = single5Key.UVRotation + ( nextSingle5Key.UVRotation - single5Key.UVRotation ) * blend;
+                                }
+                            }
+
+                            material.UVOffset = new System.Numerics.Vector2( offsetX, offsetY );
+                            material.UVScale  = new System.Numerics.Vector2( scaleX, scaleY );
+                            material.UVRotation = rot;
+                        }
+                    }
+                }
             }
         }
 
