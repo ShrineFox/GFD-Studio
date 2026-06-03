@@ -8,6 +8,7 @@ using System.Windows.Controls;
 using System.Windows.Forms;
 using GFDLibrary;
 using GFDLibrary.Animations;
+using GFDLibrary.Conversion;
 using GFDLibrary.Materials;
 using GFDLibrary.Models;
 using GFDLibrary.Textures.Texpack;
@@ -64,7 +65,9 @@ namespace GFDStudio.GUI.Forms
             retainTexNameToolStripMenuItem.Checked = settings.RetainTextureNames;
             useDarkThemeToolStripMenuItem.Checked = settings.DarkMode;
             catherineFullBodySupportToolStripMenuItem.Checked = settings.CatherineFullBodySupport;
+            compressAnimationKeyframesToolStripMenuItem.Checked = settings.CompressAnimationKeyframes;
             ResourceVersion.TreatAsCatherineFullBody = settings.CatherineFullBodySupport;
+            AnimationConverterOptions.CompressKeyframesDefault = settings.CompressAnimationKeyframes;
 #if DEBUG
             //ModelViewControl.Instance.LoadAnimation( Resource.Load<AnimationPack>( 
             //    @"D:\Modding\Persona 5 EU\Main game\ExtractedClean\data\model\character\0001\field\bf0001_002.GAP" ).Animations[2]);

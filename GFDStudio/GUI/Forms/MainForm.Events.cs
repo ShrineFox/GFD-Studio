@@ -308,6 +308,68 @@ namespace GFDStudio.GUI.Forms
             else MessageBox.Show( "All animation packs successfully converted!" );
         }
 
+        private void HandleMassCompressAnimationKeyframesToolStripMenuItemClick( object sender, EventArgs e )
+        {
+            string directoryPath;
+            var folderDialog = new VistaFolderBrowserDialog();
+            {
+                folderDialog.Description =
+                    "Select a directory containing GAP files, or subdirectories containing GAP files to compress the animation keyframes.\n" +
+                    "Note that this will replace the original files.";
+
+                if ( folderDialog.ShowDialog() != true )
+                    return;
+
+                directoryPath = folderDialog.SelectedPath;
+            }
+
+            var failures = new ConcurrentBag<string>();
+
+            using ( var dialog = new ProgressDialog() )
+            {
+                dialog.DoWork += async ( o, progress ) =>
+                {
+                    var filePaths = Directory.EnumerateFiles( directoryPath, "*.GAP", SearchOption.AllDirectories ).ToList();
+                    var processedFileCount = 0;
+
+                    var tasks = filePaths.Select( async filePath =>
+                    {
+                        lock ( dialog )
+                        {
+                            if ( dialog.CancellationPending )
+                                return;
+                            dialog.ReportProgress( (int)( ( (float)Interlocked.Increment( ref processedFileCount ) / filePaths.Count ) * 100 ),
+                                                   $"Processing {Path.GetFileName( filePath )}", null );
+                        }
+
+                        try
+                        {
+                            await Task.Run( () =>
+                            {
+                                var animationPack = Resource.Load<AnimationPack>( filePath );
+                                animationPack.CompressKeyframes();
+                                animationPack.Save( filePath );
+                            } );
+                        }
+                        catch ( Exception )
+                        {
+                            failures.Add( filePath );
+                        }
+                    } );
+
+                    await Task.WhenAll( tasks );
+                };
+
+                dialog.ShowDialog();
+            }
+
+            if ( failures.Count > 0 )
+            {
+                MessageBox.Show( "An error occured while processing the following files:\n" + string.Join( "\n", failures ) );
+            }
+            else MessageBox.Show( "All animation packs successfully compressed!" );
+        }
+
         private void HandleConvertMaterialsToolStripMenuItemClick(object sender, EventArgs e)
         {
             string directoryPath;
@@ -855,6 +917,13 @@ namespace GFDStudio.GUI.Forms
         {
             settings.CatherineFullBodySupport = catherineFullBodySupportToolStripMenuItem.Checked;
             ResourceVersion.TreatAsCatherineFullBody = settings.CatherineFullBodySupport;
+            settings.SaveJson( settings );
+        }
+
+        private void handleCompressAnimationKeyframesChanged( object sender, EventArgs e )
+        {
+            settings.CompressAnimationKeyframes = compressAnimationKeyframesToolStripMenuItem.Checked;
+            AnimationConverterOptions.CompressKeyframesDefault = settings.CompressAnimationKeyframes;
             settings.SaveJson( settings );
         }
     }

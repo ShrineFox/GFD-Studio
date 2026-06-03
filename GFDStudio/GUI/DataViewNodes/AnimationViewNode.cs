@@ -102,16 +102,10 @@ namespace GFDStudio.GUI.DataViewNodes
             RegisterReplaceHandler<AssimpScene>( file =>
             {
                 var animation = AssimpNetAnimationConverter.ConvertFromAssimpScene( file, new AnimationConverterOptions() );
-                var modelViewModel = Parent?.Parent as ModelPackViewNode;
+                var skeleton = ResolveSkeletonOrPrompt();
 
-                if ( modelViewModel?.Model != null )
-                {
-                    animation.FixTargetIds( modelViewModel.Model.Data );
-                }
-                else
-                {
-                    ImportModelAndFixTargetIds( animation );
-                }
+                if ( skeleton != null )
+                    animation.FixTargetIds( skeleton );
 
                 return animation;
             } );
