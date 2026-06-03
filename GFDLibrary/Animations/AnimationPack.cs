@@ -53,6 +53,8 @@ namespace GFDLibrary.Animations
             {
                 // Try to read blend animations
                 BlendAnimations = ReadAnimations( reader );
+                foreach ( var anim in BlendAnimations )
+                    anim.IsBlendAnimation = true;
             }
             //catch ( Exception )
             //{
@@ -274,6 +276,8 @@ namespace GFDLibrary.Animations
 
             MergeAnimationLists(Animations, other.Animations);
             MergeAnimationLists(BlendAnimations, other.BlendAnimations);
+            foreach ( var anim in BlendAnimations )
+                anim.IsBlendAnimation = true;
         }
 
         private static void MergeAnimationLists(List<Animation> baseList, List<Animation> otherList)

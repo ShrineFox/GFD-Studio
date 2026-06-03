@@ -72,9 +72,11 @@ namespace GFDStudio.GUI.Controls
 
         public Animation Animation { get; private set; }
 
+        public Animation BlendAnimation { get; private set; }
+
         public Model Model => mModel?.ModelPack?.Model;
 
-        public bool IsAnimationLoaded => Animation != null;
+        public bool IsAnimationLoaded => Animation != null || BlendAnimation != null;
 
         public AnimationPlaybackState AnimationPlayback
         {
@@ -95,8 +97,10 @@ namespace GFDStudio.GUI.Controls
                     case AnimationPlaybackState.Paused:
                         break;
                     case AnimationPlaybackState.Playing:
-                        if ( mModel?.Animation == null && IsAnimationLoaded )
+                        if ( mModel?.Animation == null && Animation != null )
                             mModel?.LoadAnimation( Animation );
+                        if ( mModel?.BlendAnimation == null && BlendAnimation != null )
+                            mModel?.LoadBlendAnimation( BlendAnimation );
                         break;
                 }
 
@@ -501,6 +505,12 @@ namespace GFDStudio.GUI.Controls
                 LoadAnimation( Animation, AnimationPlayback != AnimationPlaybackState.Playing );
             }
 
+            if ( BlendAnimation != null )
+            {
+                // Apply previously loaded blend animation to new model
+                LoadBlendAnimation( BlendAnimation, AnimationPlayback != AnimationPlaybackState.Playing );
+            }
+
             Invalidate();
         }
 
@@ -514,6 +524,25 @@ namespace GFDStudio.GUI.Controls
             mModel?.LoadAnimation( Animation );
 
             AnimationLoaded?.Invoke( this, animation );
+
+            if ( reset )
+            {
+                AnimationTime = 0;
+                AnimationPlayback = AnimationPlaybackState.Playing;
+            }
+        }
+
+        public void LoadBlendAnimation( Animation animation, bool reset = true )
+        {
+            BlendAnimation = animation;
+
+            if ( mModel != null )
+                animation.FixTargetIds( mModel.ModelPack.Model );
+
+            mModel?.LoadBlendAnimation( animation );
+
+            if ( animation.Duration > 0 )
+                AnimationLoaded?.Invoke( this, animation );
 
             if ( reset )
             {
@@ -574,8 +603,12 @@ namespace GFDStudio.GUI.Controls
 
             if ( AnimationPlayback == AnimationPlaybackState.Playing )
             {
-                var nextAnimationTime = AnimationTime + ( deltaTime * Animation.Speed.GetValueOrDefault( 1f ) );
-                AnimationTime = nextAnimationTime >= Animation.Duration ? 0 : nextAnimationTime;
+                var activeAnimation = ( BlendAnimation != null && BlendAnimation.Duration > 0 ) ? BlendAnimation : Animation;
+                if ( activeAnimation != null )
+                {
+                    var nextAnimationTime = AnimationTime + ( deltaTime * activeAnimation.Speed.GetValueOrDefault( 1f ) );
+                    AnimationTime = nextAnimationTime >= activeAnimation.Duration ? 0 : nextAnimationTime;
+                }
             }
 
             action();

@@ -24,6 +24,8 @@ namespace GFDLibrary.Rendering.OpenGL
 
         public Animation Animation { get; private set; }
 
+        public Animation BlendAnimation { get; private set; }
+
         private List<AnimationController> mMorphControllers = new List<AnimationController>();
 
         private Dictionary<(string, int), float> mMorphWeights = new Dictionary<(string, int), float>();
@@ -244,12 +246,26 @@ namespace GFDLibrary.Rendering.OpenGL
                                                                            x.TargetKind == TargetKind.MorphIndexed ) );
         }
 
-        public void UnloadAnimation()
+        public void LoadBlendAnimation( Animation animation )
         {
-            Animation = null;
+            BlendAnimation = animation;
 
             foreach ( var glNode in Nodes )
             {
+                glNode.BlendControllers.Clear();
+                glNode.BlendControllers.AddRange( animation.Controllers.Where( x => x.TargetKind == TargetKind.Node &&
+                                                                                    x.TargetName == glNode.Node.Name ) );
+            }
+        }
+
+        public void UnloadAnimation()
+        {
+            Animation = null;
+            BlendAnimation = null;
+
+            foreach ( var glNode in Nodes )
+            {
+                glNode.BlendControllers.Clear();
                 // Calculate current transform
                 var transform = Matrix4x4.CreateFromQuaternion( glNode.Node.Rotation ) * Matrix4x4.CreateScale( glNode.Node.Scale );
                 transform.Translation   = glNode.Node.Translation;
@@ -302,7 +318,7 @@ namespace GFDLibrary.Rendering.OpenGL
 
         public void Draw( DrawContext context )
         {
-            if ( Animation != null )
+            if ( Animation != null || BlendAnimation != null )
                 AnimateNodes( context.AnimationTime );
             context.ShaderRegistry.mDefaultShader.Use();
             context.ShaderRegistry.mDefaultShader.SetUniform( "uView", context.Camera.View );
@@ -323,7 +339,7 @@ namespace GFDLibrary.Rendering.OpenGL
                 {
                     var glMesh = glNode.Meshes[i];
 
-                    if ( Animation != null && glMesh.Mesh != null )
+                    if ( ( Animation != null || BlendAnimation != null ) && glMesh.Mesh != null )
                     {
                         var oldGlMesh = glMesh;
                         var morphWeights = GetMorphWeightsForNode( glNode.Node );
@@ -414,12 +430,14 @@ namespace GFDLibrary.Rendering.OpenGL
 
                                 if ( nextPrsKey != null )
                                 {
-                                    InterpolateKeys( animationTime, layer, ref rotation, ref translation, ref scale, prsKey, nextPrsKey );
+                                    InterpolateKeys( animationTime, layer, ref rotation, ref translation, ref scale, prsKey, nextPrsKey, Animation.Duration );
                                 }
                                 else
                                 {
                                     if ( prsKey.HasRotation )
+                                    {
                                         rotation = prsKey.Rotation;
+                                    }
 
                                     if ( prsKey.HasPosition )
                                         translation = prsKey.Position * layer.PositionScale;
@@ -436,14 +454,56 @@ namespace GFDLibrary.Rendering.OpenGL
                     }
                 }
 
+                foreach ( var blendController in glNode.BlendControllers )
+                {
+                    foreach ( var layer in blendController.Layers )
+                    {
+                        Key curKey = null;
+                        Key nextKey = null;
+
+                        (curKey, nextKey) = GetCurrentAndNextKeys( layer, animationTime );
+
+                        if ( curKey != null && layer.HasPRSKeyFrames )
+                        {
+                            var prsKey = ( PRSKey )curKey;
+                            var nextPrsKey = ( PRSKey )nextKey;
+
+                            if ( nextPrsKey != null )
+                            {
+                                var offsetRotation = Quaternion.Identity;
+                                var offsetTranslation = Vector3.Zero;
+                                var offsetScale = Vector3.Zero;
+                                InterpolateKeys( animationTime, layer, ref offsetRotation, ref offsetTranslation, ref offsetScale, prsKey, nextPrsKey, BlendAnimation.Duration );
+                                translation += offsetTranslation;
+                                rotation = Quaternion.Concatenate( offsetRotation, rotation );
+                                scale += offsetScale;
+
+                            }
+                            else
+                            {
+                                if ( prsKey.HasPosition )
+                                    translation += prsKey.Position * layer.PositionScale;
+
+                                if ( prsKey.HasRotation )
+                                    rotation = Quaternion.Concatenate( prsKey.Rotation, rotation );
+
+                                if ( prsKey.HasScale )
+                                    scale += prsKey.Scale * layer.ScaleScale;
+
+                            }
+                        }
+                    }
+                }
+
                 // Calculate current transform
-                var transform = Matrix4x4.CreateFromQuaternion( rotation ) * Matrix4x4.CreateScale( glNode.Node.Scale );
+                var transform = Matrix4x4.CreateFromQuaternion( rotation ) * Matrix4x4.CreateScale( scale );
                 transform.Translation   = translation;
                 glNode.CurrentTransform = transform;
 
                 // Calculate world transform
                 glNode.WorldTransform =
                     glNode.Parent == null ? glNode.CurrentTransform : glNode.CurrentTransform * glNode.Parent.WorldTransform;
+
             }
 
             // Evaluate morph target weights
@@ -482,10 +542,10 @@ namespace GFDLibrary.Rendering.OpenGL
             }
         }
 
-        private void InterpolateKeys( double animationTime, AnimationLayer layer, ref Quaternion rotation, ref Vector3 translation, ref Vector3 scale, PRSKey prsKey, PRSKey nextPrsKey )
+        private void InterpolateKeys( double animationTime, AnimationLayer layer, ref Quaternion rotation, ref Vector3 translation, ref Vector3 scale, PRSKey prsKey, PRSKey nextPrsKey, float duration )
         {
             var nextTime = ( nextPrsKey.Time < prsKey.Time
-                ? ( nextPrsKey.Time + Animation.Duration )
+                ? ( nextPrsKey.Time + duration )
                 : nextPrsKey.Time );
 
             var blend = ( float ) ( animationTime / nextTime );

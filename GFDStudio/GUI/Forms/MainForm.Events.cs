@@ -782,7 +782,11 @@ namespace GFDStudio.GUI.Forms
 
             if ( node.DataType == typeof(Animation) )
             {
-                ModelViewControl.Instance.LoadAnimation( ( Animation )node.Data );
+                var animation = ( Animation )node.Data;
+                if ( animation.IsBlendAnimation )
+                    ModelViewControl.Instance.LoadBlendAnimation( animation );
+                else
+                    ModelViewControl.Instance.LoadAnimation( animation );
             }
             else if ( node.DataType == typeof(AnimationPack) )
             {
@@ -870,7 +874,13 @@ namespace GFDStudio.GUI.Forms
         {
             var node = ( DataViewNode )e.Node;
             if ( node.DataType == typeof(Animation) )
-                ModelViewControl.Instance.LoadAnimation( ( Animation ) node.Data );
+            {
+                var animation = ( Animation )node.Data;
+                if ( animation.IsBlendAnimation )
+                    ModelViewControl.Instance.LoadBlendAnimation( animation );
+                else
+                    ModelViewControl.Instance.LoadAnimation( animation );
+            }
 
             mPropertyGrid.SelectedObject = node;
         }
