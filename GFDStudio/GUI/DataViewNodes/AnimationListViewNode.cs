@@ -49,13 +49,19 @@ namespace GFDStudio.GUI.DataViewNodes
                 if ( dialog.ShowDialog() != true )
                     return;
 
+                var result = MessageBox.Show(
+                    "Apply 3DS Max interpolation bug fix?",
+                    "Euler Alignment", MessageBoxButtons.YesNo, MessageBoxIcon.Question );
+
+                var alignEulers = result == DialogResult.Yes;
+
                 foreach ( AnimationViewNode animationViewModel in Nodes )
                 {
                     var animName = animationViewModel.Text;
                     var fbxPath = Path.Combine( dialog.SelectedPath, animName + ".fbx" );
                     try
                     {
-                        AnimationExportHelper.ExportFile( animationViewModel.Data, skeleton, animName, fbxPath );
+                        AnimationExportHelper.ExportFile( animationViewModel.Data, skeleton, animName, fbxPath, alignEulers );
                     }
                     catch ( Exception ex )
                     {

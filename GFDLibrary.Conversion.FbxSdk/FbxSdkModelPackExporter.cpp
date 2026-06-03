@@ -997,7 +997,7 @@ namespace GFDLibrary::Conversion::FbxSdk
 				{
 					auto fbxNode = (FbxNode*)fbxNodePtr.ToPointer();
 					for each (AnimationLayer^ layer in controller->Layers)
-						FbxSdkAnimationExporter::AddPRSKeysToCurves(fbxNode, fbxAnimLayer, layer);
+						FbxSdkAnimationExporter::AddPRSKeysToCurves(fbxNode, fbxAnimLayer, layer, true);
 				}
 			}
 		}

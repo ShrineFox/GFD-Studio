@@ -96,7 +96,12 @@ namespace GFDStudio.GUI.DataViewNodes
                 var skeleton = ResolveSkeletonOrPrompt();
                 if ( skeleton == null )
                     return;
-                AnimationExportHelper.ExportFile( Data, skeleton, Text, path );
+
+                var result = MessageBox.Show(
+                    "Apply 3DS Max interpolation bug fix?",
+                    "Euler Alignment", MessageBoxButtons.YesNo, MessageBoxIcon.Question );
+
+                AnimationExportHelper.ExportFile( Data, skeleton, Text, path, result == DialogResult.Yes );
             } );
             RegisterReplaceHandler<Animation>( Resource.Load<Animation> );
             RegisterReplaceHandler<AssimpScene>( file =>

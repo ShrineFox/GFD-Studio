@@ -168,7 +168,7 @@ namespace GFDLibrary::Conversion::FbxSdk
 		}
 	}
 
-	void FbxSdkAnimationExporter::AddPRSKeysToCurves(FbxNode* fbxNode, FbxAnimLayer* fbxAnimLayer, AnimationLayer^ layer)
+	void FbxSdkAnimationExporter::AddPRSKeysToCurves(FbxNode* fbxNode, FbxAnimLayer* fbxAnimLayer, AnimationLayer^ layer, bool alignEulers)
 	{
 		FbxAnimCurve* tx = nullptr;
 		FbxAnimCurve* ty = nullptr;
@@ -239,21 +239,23 @@ namespace GFDLibrary::Conversion::FbxSdk
 				// taken from https://github.com/Pherakki/BlenderToolsForGFS/blob/develop/src/BlenderIO/modelUtilsTest/Skeleton/Transform/Animation/Transform.py#L55
 				// unwraps euler angles to prevent huge jumps i.e. 180 -> -180
 				// this fixes interpolation bug in softwares like 3ds max
-				
-				if (hasFirstRotationKey)
+				if (alignEulers)
 				{
-					double shiftX = 360.0 * round((prevEx - ex) / 360.0);
-					double shiftY = 360.0 * round((prevEy - ey) / 360.0);
-					double shiftZ = 360.0 * round((prevEz - ez) / 360.0);
-					ex = (float)(ex + shiftX);
-					ey = (float)(ey + shiftY);
-					ez = (float)(ez + shiftZ);
-				}
+					if (hasFirstRotationKey)
+					{
+						double shiftX = 360.0 * round((prevEx - ex) / 360.0);
+						double shiftY = 360.0 * round((prevEy - ey) / 360.0);
+						double shiftZ = 360.0 * round((prevEz - ez) / 360.0);
+						ex = (float)(ex + shiftX);
+						ey = (float)(ey + shiftY);
+						ez = (float)(ez + shiftZ);
+					}
 
-				prevEx = ex;
-				prevEy = ey;
-				prevEz = ez;
-				hasFirstRotationKey = true;
+					prevEx = ex;
+					prevEy = ey;
+					prevEz = ez;
+					hasFirstRotationKey = true;
+				}
 
 				int kx = rx->KeyAdd(time); rx->KeySetValue(kx, ex); rx->KeySetInterpolation(kx, FbxAnimCurveDef::eInterpolationLinear);
 				int ky = ry->KeyAdd(time); ry->KeySetValue(ky, ey); ry->KeySetInterpolation(ky, FbxAnimCurveDef::eInterpolationLinear);
@@ -351,7 +353,7 @@ namespace GFDLibrary::Conversion::FbxSdk
 
 			for each (AnimationLayer^ layer in controller->Layers)
 			{
-				AddPRSKeysToCurves(fbxNode, fbxAnimLayer, layer);
+				AddPRSKeysToCurves(fbxNode, fbxAnimLayer, layer, mConfig->AlignEulers);
 			}
 		}
 

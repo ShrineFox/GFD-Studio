@@ -11,7 +11,9 @@ namespace GFDLibrary::Conversion::FbxSdk
 	public:
 		inline FbxSdkAnimationExporterConfig()
 		{
+			AlignEulers = true;
 		}
+		property bool AlignEulers;
 	};
 	public ref class FbxSdkAnimationExporterException : public Exception
 	{
@@ -27,7 +29,7 @@ namespace GFDLibrary::Conversion::FbxSdk
 		static void ExportFile(Animation^ animation, Model^ skeleton, String^ animationName, String^ path, FbxSdkAnimationExporterConfig^ config);
 		void Export(Animation^ animation, Model^ skeleton, String^ animationName, String^ path, FbxSdkAnimationExporterConfig^ config);
 
-		static void AddPRSKeysToCurves(FbxNode* fbxNode, FbxAnimLayer* fbxAnimLayer, AnimationLayer^ layer);
+		static void AddPRSKeysToCurves(FbxNode* fbxNode, FbxAnimLayer* fbxAnimLayer, AnimationLayer^ layer, bool alignEulers);
 		static void AddMorphKeysToCurves(FbxBlendShapeChannel* fbxChannel, FbxAnimLayer* fbxAnimLayer, AnimationLayer^ layer);
 
 	private:

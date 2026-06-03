@@ -8,12 +8,12 @@ namespace GFDStudio.FormatModules
 {
     public static class AnimationExportHelper
     {
-        public static void ExportFile( Animation animation, Model skeleton, string path )
+        public static void ExportFile( Animation animation, Model skeleton, string path, bool alignEulers = true )
         {
-            ExportFile( animation, skeleton, null, path );
+            ExportFile( animation, skeleton, null, path, alignEulers );
         }
 
-        public static void ExportFile( Animation animation, Model skeleton, string animationName, string path )
+        public static void ExportFile( Animation animation, Model skeleton, string animationName, string path, bool alignEulers = true )
         {
             if ( path.EndsWith( ".ascii.fbx", StringComparison.OrdinalIgnoreCase )
                  || Path.GetExtension( path ).Equals( ".fbx", StringComparison.OrdinalIgnoreCase ) )
@@ -21,7 +21,8 @@ namespace GFDStudio.FormatModules
                 if ( skeleton == null )
                     throw new InvalidOperationException( "A skeleton model is required to export an animation to FBX." );
 
-                FbxSdkAnimationExporter.ExportFile( animation, skeleton, animationName, path, new FbxSdkAnimationExporterConfig() );
+                FbxSdkAnimationExporter.ExportFile( animation, skeleton, animationName, path,
+                    new FbxSdkAnimationExporterConfig { AlignEulers = alignEulers } );
                 return;
             }
 
