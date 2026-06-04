@@ -306,6 +306,9 @@ namespace GFDLibrary.Rendering.OpenGL
                 material.UVOffset = System.Numerics.Vector2.Zero;
                 material.UVScale = System.Numerics.Vector2.One;
                 material.UVRotation = 0f;
+                material.UV1Offset = System.Numerics.Vector2.Zero;
+                material.UV1Scale = System.Numerics.Vector2.One;
+                material.UV1Rotation = 0f;
             }
         }
 
@@ -575,7 +578,7 @@ namespace GFDLibrary.Rendering.OpenGL
 
                 foreach ( var layer in controller.Layers )
                 {
-                    if ( layer.HasSingleKeyFrames && layer.KeyType == KeyType.MaterialSingle_4 )
+                    if ( layer.HasSingleKeyFrames && layer.KeyType == KeyType.EKeyType_Opacity )
                     {
                         // check Diffusivity flag (bit 6) for alpha animation
                         if ( ( material.MatFlags & ( 1 << 6 ) ) == 0 )
@@ -619,8 +622,8 @@ namespace GFDLibrary.Rendering.OpenGL
                             float scaleY  = single5Key.UVScaleY;
                             float rot     = single5Key.UVRotation;
 
-                            // Single5 and Single5_2 have interpolation; Single5Alt does not
-                            if ( ( layer.KeyType == KeyType.Single5_2 || layer.KeyType == KeyType.Single5 ) && nextKey is Single5Key nextSingle5Key )
+                            // EKeyType_UV0Transform (13) and EKeyType_UV1Transform (20) use interpolation
+                            if ( ( layer.KeyType == KeyType.EKeyType_UV1Transform || layer.KeyType == KeyType.EKeyType_UV0Transform ) && nextKey is Single5Key nextSingle5Key )
                             {
                                 var nextTime = nextSingle5Key.Time < single5Key.Time
                                     ? ( nextSingle5Key.Time + Animation.Duration )
@@ -637,9 +640,19 @@ namespace GFDLibrary.Rendering.OpenGL
                                 }
                             }
 
-                            material.UVOffset = new System.Numerics.Vector2( offsetX, offsetY );
-                            material.UVScale  = new System.Numerics.Vector2( scaleX, scaleY );
-                            material.UVRotation = rot;
+                            // EKeyType_UV0Transform (13) and EKeyType_UV0Transform_NoInterp (21) target UV0; EKeyType_UV1Transform (20) and EKeyType_UV1Transform_NoInterp (36) target UV1
+                            if ( layer.KeyType == KeyType.EKeyType_UV1Transform || layer.KeyType == KeyType.EKeyType_UV1Transform_NoInterp )
+                            {
+                                material.UV1Offset   = new System.Numerics.Vector2( offsetX, offsetY );
+                                material.UV1Scale    = new System.Numerics.Vector2( scaleX, scaleY );
+                                material.UV1Rotation = rot;
+                            }
+                            else
+                            {
+                                material.UVOffset   = new System.Numerics.Vector2( offsetX, offsetY );
+                                material.UVScale    = new System.Numerics.Vector2( scaleX, scaleY );
+                                material.UVRotation = rot;
+                            }
                         }
                     }
                 }

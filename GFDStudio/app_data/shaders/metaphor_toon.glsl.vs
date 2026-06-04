@@ -27,6 +27,8 @@ uniform mat4 uView;
 uniform mat4 uProjection;
 uniform vec4 uUVTransform;
 uniform float uUVRotation;
+uniform vec4 uUV1Transform;
+uniform float uUV1Rotation;
 
 void main() {
     mat4 uModelView = uView * uModel;
@@ -34,13 +36,20 @@ void main() {
     fNormal = vNormal.xyz;
     fFacingNormal = (uModelView * vec4(vNormal, 0.0)).xyz;
 
-    // UV animation: scale, then rotate, then offset (starting from 0,0 origin)
-    vec2 uv = vTex0 * uUVTransform.zw;
-    float s = sin(uUVRotation);
-    float c = cos(uUVRotation);
-    uv = vec2(uv.x * c - uv.y * s, uv.x * s + uv.y * c);
-    fTex0 = uv + vec2( -uUVTransform.x, uUVTransform.y );
-    fTex1 = vTex1;
+    // UV0 animation: scale, then rotate, then offset (starting from 0,0 origin)
+    vec2 uv0 = vTex0 * uUVTransform.zw;
+    float s0 = sin(uUVRotation);
+    float c0 = cos(uUVRotation);
+    uv0 = vec2(uv0.x * c0 - uv0.y * s0, uv0.x * s0 + uv0.y * c0);
+    fTex0 = uv0 + vec2( -uUVTransform.x, uUVTransform.y );
+
+    // UV1 animation
+    vec2 uv1 = vTex1 * uUV1Transform.zw;
+    float s1 = sin(uUV1Rotation);
+    float c1 = cos(uUV1Rotation);
+    uv1 = vec2(uv1.x * c1 - uv1.y * s1, uv1.x * s1 + uv1.y * c1);
+    fTex1 = uv1 + vec2( -uUV1Transform.x, uUV1Transform.y );
+
     fTex2 = vTex2;
 
     fColor0 = vColor0;

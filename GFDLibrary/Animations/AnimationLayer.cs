@@ -71,7 +71,7 @@ namespace GFDLibrary.Animations
                     case KeyType.Single:
                     case KeyType.Single_2:
                     case KeyType.Single_3:
-                    case KeyType.MaterialSingle_4:
+                    case KeyType.EKeyType_Opacity:
                     case KeyType.Single_5:
                     case KeyType.Single_6:
                     case KeyType.CameraFieldOfView:
@@ -93,10 +93,10 @@ namespace GFDLibrary.Animations
             {
                 switch ( KeyType )
                 {
-                    case KeyType.Single5:
-                    case KeyType.Single5_2:
-                    case KeyType.Single5Alt:
-                    case KeyType.Type36_P5R:
+                    case KeyType.EKeyType_UV0Transform:
+                    case KeyType.EKeyType_UV1Transform:
+                    case KeyType.EKeyType_UV0Transform_NoInterp:
+                    case KeyType.EKeyType_UV1Transform_NoInterp:
                         return true;
 
                     default:
@@ -113,7 +113,7 @@ namespace GFDLibrary.Animations
         }
 
         public AnimationLayer() : this(ResourceVersion.Persona5)
-        {         
+        {
         }
 
         protected override void ReadCore( ResourceReader reader )
@@ -144,10 +144,10 @@ namespace GFDLibrary.Animations
                         key = new PRSKey( KeyType );
                         break;
                     case KeyType.Vector3:
-                    case KeyType.Vector3_2:
-                    case KeyType.Vector3_3:
-                    case KeyType.Vector3_4:
-                    case KeyType.MaterialVector3_5:
+                    case KeyType.EKeyType_AmbientColor:
+                    case KeyType.EKeyType_DiffuseColor:
+                    case KeyType.EKeyType_SpecularColor:
+                    case KeyType.EKeyType_EmissiveColor:
                         key = new Vector3Key( KeyType );
                         break;
                     case KeyType.Quaternion:
@@ -157,7 +157,7 @@ namespace GFDLibrary.Animations
                     case KeyType.Single:
                     case KeyType.Single_2:
                     case KeyType.Single_3:
-                    case KeyType.MaterialSingle_4:
+                    case KeyType.EKeyType_Opacity:
                     case KeyType.Single_5:
                     case KeyType.Single_6:
                     case KeyType.CameraFieldOfView:
@@ -167,16 +167,16 @@ namespace GFDLibrary.Animations
                     case KeyType.SingleAlt_3:
                         key = new SingleKey( KeyType );
                         break;
-                    case KeyType.Single5:
-                    case KeyType.Single5_2:
-                    case KeyType.Single5Alt:
-                    case KeyType.Type36_P5R:
+                    case KeyType.EKeyType_UV0Transform:
+                    case KeyType.EKeyType_UV1Transform:
+                    case KeyType.EKeyType_UV0Transform_NoInterp:
+                    case KeyType.EKeyType_UV1Transform_NoInterp:
                         key = new Single5Key( KeyType );
                         break;
                     case KeyType.NodePRSByte:
                         key = new PRSByteKey();
                         break;
-                    case KeyType.Single4Byte:
+                    case KeyType.EKeyType_MeshColor:
                         if ( ResourceVersion.TreatAsCatherineFullBody )
                             key = new Single4ByteKey();
                         else

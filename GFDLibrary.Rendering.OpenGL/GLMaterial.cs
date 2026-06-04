@@ -52,6 +52,10 @@ namespace GFDLibrary.Rendering.OpenGL
         public System.Numerics.Vector2 UVScale { get; set; } = System.Numerics.Vector2.One;
         public float UVRotation { get; set; }
 
+        public System.Numerics.Vector2 UV1Offset { get; set; }
+        public System.Numerics.Vector2 UV1Scale { get; set; } = System.Numerics.Vector2.One;
+        public float UV1Rotation { get; set; }
+
         public GLBaseMaterial()
         {
         }
@@ -336,6 +340,9 @@ namespace GFDLibrary.Rendering.OpenGL
             shaderProgram.SetUniform( "uUVTransform", new OpenTK.Vector4(
                 UVOffset.X, UVOffset.Y, UVScale.X, UVScale.Y ) );
             shaderProgram.SetUniform( "uUVRotation", UVRotation );
+            shaderProgram.SetUniform( "uUV1Transform", new OpenTK.Vector4(
+                UV1Offset.X, UV1Offset.Y, UV1Scale.X, UV1Scale.Y ) );
+            shaderProgram.SetUniform( "uUV1Rotation", UV1Rotation );
         }
         public override bool IsMaterialTransparent() => DrawMethod != 0 || ( DrawMethod == 0 && ( Diffuse.W * AnimatedAlpha < 1.0 ) );
     }
@@ -370,6 +377,9 @@ namespace GFDLibrary.Rendering.OpenGL
             shaderProgram.SetUniform( "uUVTransform", new OpenTK.Vector4(
                 UVOffset.X, UVOffset.Y, UVScale.X, UVScale.Y ) );
             shaderProgram.SetUniform( "uUVRotation", UVRotation );
+            shaderProgram.SetUniform( "uUV1Transform", new OpenTK.Vector4(
+                UV1Offset.X, UV1Offset.Y, UV1Scale.X, UV1Scale.Y ) );
+            shaderProgram.SetUniform( "uUV1Rotation", UV1Rotation );
         }
         public override bool IsMaterialTransparent() => ParameterSet.IsMaterialTransparent();
     }
