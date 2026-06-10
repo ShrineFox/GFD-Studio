@@ -263,6 +263,7 @@ namespace GFDLibrary.Rendering.OpenGL
         public bool HasType1 { get; set; } = false;
         public bool HasType4 { get; set; } = false;
         public int Type0Flags { get; set; }
+        public bool HasType8 { get; set; } = false;
 
         public GLP5Material()
         {
@@ -275,7 +276,6 @@ namespace GFDLibrary.Rendering.OpenGL
             Specular = material.LegacyParameters.SpecularColor.ToOpenTK();
             Emissive = material.LegacyParameters.EmissiveColor.ToOpenTK();
             Reflectivity = material.LegacyParameters.Reflectivity;
-
 
             if ( material.Attributes != null && material.Flags.HasFlag( MaterialFlags.HasAttributes ) )
             {
@@ -312,6 +312,21 @@ namespace GFDLibrary.Rendering.OpenGL
                 ToonLightThreshold = type4.LightThreshold;
                 ToonLightFactor = type4.LightFactor;
             }
+
+            // CFB support attempt
+            if ( ResourceVersion.TreatAsCatherineFullBody && material.Attributes != null )
+            {
+                HasType8 = material.Attributes.Any( x => x.AttributeType == MaterialAttributeType.Type8 );
+                if ( HasType8 )
+                {
+                    HasType1 = true;
+                    MaterialAttributeType8 type8 = (MaterialAttributeType8)material.Attributes.Single(
+                        x => x.AttributeType == MaterialAttributeType.Type8 );
+                    ToonLightColor = new Vector4( type8.Field00.X, type8.Field00.Y, type8.Field00.Z, type8.Field0C );
+                    ToonLightThreshold = type8.Field10;
+                    ToonLightFactor = type8.Field14;
+                }
+            }
         }
 
         public override void Bind( GLShaderProgram shaderProgram )
@@ -329,6 +344,7 @@ namespace GFDLibrary.Rendering.OpenGL
             shaderProgram.SetUniform( "uMatHasType0", HasType0 );
             shaderProgram.SetUniform( "uMatHasType1", HasType1 );
             shaderProgram.SetUniform( "uMatHasType4", HasType4 );
+            shaderProgram.SetUniform( "uMatHasType8", HasType8 );
             shaderProgram.SetUniform( "uMatType0Flags", Type0Flags );
             shaderProgram.SetUniform( "uMatToonLightColor", ToonLightColor );
             shaderProgram.SetUniform( "uMatToonLightFactor", ToonLightFactor );
