@@ -1,4 +1,11 @@
-﻿using System;
+﻿using Assimp;
+using GFDLibrary;
+using GFDLibrary.Models;
+using GFDStudio.DataManagement;
+using GFDStudio.FormatModules;
+using GFDStudio.GUI.Forms;
+using GFDStudio.IO;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -7,10 +14,6 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Forms;
-using GFDLibrary;
-using GFDStudio.DataManagement;
-using GFDStudio.FormatModules;
-using GFDStudio.GUI.Forms;
 
 namespace GFDStudio.GUI.DataViewNodes
 {
@@ -459,7 +462,55 @@ namespace GFDStudio.GUI.DataViewNodes
                     return;
             }
 
+            // Handle rename
+            string oldText = null;
+            string newText = null;
+            if ( propertyName == "Name" && DataTreeView.TopNode.DataType == typeof( ModelPack ) )
+            {
+                var nameProperty = instanceType.GetProperty( "Name" );
+                if ( nameProperty != null )
+                {
+                    oldText = nameProperty.GetValue( instance, null )?.ToString();
+                }
+            }
+
             property.SetValue( instance, value );
+
+            // Handle rename
+            if ( propertyName == "Name" && DataTreeView.TopNode.DataType == typeof( ModelPack ) )
+            {
+                newText = value?.ToString();
+
+                ModelPack modelPack = (ModelPack)DataTreeView.TopNode.Data;
+
+                if ( this.DataType.Name == "Material" )
+                {
+                    // Update material name of meshes that use the old material name
+                    foreach ( var mesh in modelPack.Model.Meshes )
+                    {
+                        if ( mesh.MaterialName == oldText )
+                        {
+                            mesh.MaterialName = newText;
+                        }
+                    }
+                }
+
+                else if ( this.DataType.Name == "Texture" )
+                {
+                    // Update texture name of texture maps that use the old texture name
+                    foreach ( var material in modelPack.Materials.Materials )
+                    {
+                        foreach ( var texmap in material.TextureMaps.Where( x => x != null ) )
+                        {
+                            if ( texmap.Name == oldText )
+                                texmap.Name = newText;
+                        }
+
+                    }
+                }
+
+            }
+            
 
             // ReSharper disable once ExplicitCallerInfoArgument
             NotifyPropertyChanged( propertyName );
