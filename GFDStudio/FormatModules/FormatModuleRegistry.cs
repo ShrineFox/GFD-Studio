@@ -31,13 +31,14 @@ namespace GFDStudio.FormatModules
                 // generic modules
                 new StreamFormatModule(),
                 new BitmapFormatModule(),
-                new AssimpSceneFormatModule(),
+
+                // gfd resource modules
+                new ModelPackFormatModule(),
 
                 // archive modules
                 new ArchiveFormatModule(),
 
-                // gfd resource modules
-                new ModelPackFormatModule(),
+                new AssimpSceneFormatModule(),
 
                 // gfd texture resource modules 
                 new TextureDictionaryFormatModule(),
