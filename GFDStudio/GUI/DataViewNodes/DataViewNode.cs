@@ -707,6 +707,10 @@ namespace GFDStudio.GUI.DataViewNodes
             // initialize the derived view model
             InitializeCore();
 
+            // Register format-module-based sub-items after YAML so users can see
+            // that formats other than YAML are available
+            RegisterFormatModuleMenuItems();
+
             // Set the icon
             SetIcon();
 
@@ -717,6 +721,46 @@ namespace GFDStudio.GUI.DataViewNodes
             PropertyChanged += OnPropertyChanged;
         }
 
+        private void RegisterFormatModuleMenuItems()
+        {
+            if ( mExportHandlers.Count > 0 )
+            {
+                var extensions = new List<string>();
+                foreach ( var type in mExportHandlers.Keys )
+                {
+                    if ( FormatModuleRegistry.ModuleByType.TryGetValue( type, out var module ) )
+                    {
+                        foreach ( var ext in module.Extensions )
+                            extensions.Add( $"*.{ext}" );
+                    }
+                }
+
+                if ( extensions.Count > 0 )
+                {
+                    var extText = string.Join( ";", extensions );
+                    RegisterCustomHandler( "Export", extText, () => Export() );
+                }
+            }
+
+            if ( mReplaceHandlers.Count > 0 )
+            {
+                var extensions = new List<string>();
+                foreach ( var type in mReplaceHandlers.Keys )
+                {
+                    if ( FormatModuleRegistry.ModuleByType.TryGetValue( type, out var module ) )
+                    {
+                        foreach ( var ext in module.Extensions )
+                            extensions.Add( $"*.{ext}" );
+                    }
+                }
+
+                if ( extensions.Count > 0 )
+                {
+                    var extText = string.Join( ";", extensions );
+                    RegisterCustomHandler( "Replace", extText, () => Replace() );
+                }
+            }
+        }
 
         private void SetIcon()
         {
