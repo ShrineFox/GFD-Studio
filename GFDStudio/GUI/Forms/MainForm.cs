@@ -157,7 +157,7 @@ namespace GFDStudio.GUI.Forms
             }
 
             RecordOpenedFile( filePath );
-            if (node.DataType == typeof(Animation) || node.DataType == typeof(AnimationPack))
+            if ( node.DataType == typeof( Animation ) || node.DataType == typeof( AnimationPack ) )
             {
                 mAnimationListTreeView.SetTopNode( node );
             }
@@ -248,7 +248,7 @@ namespace GFDStudio.GUI.Forms
                     ModelViewControl.Instance.Visible = false;
                     control = ModelViewControl.Instance;
                 }
-                else if ( module.ModelType == typeof( Mesh ))
+                else if ( module.ModelType == typeof( Mesh ) )
                 {
                     ModelViewControl.Instance.SetSelection( (Mesh)node.Data );
                 }

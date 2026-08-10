@@ -767,6 +767,22 @@ namespace GFDStudio.GUI.Forms
             else MessageBox.Show( "All animation packs successfully rescaled!" );
         }
 
+        private void HandleRotateRootNodeToolStripItemClick( object sender, EventArgs e )
+        {
+            Vector3 rot;
+            Quaternion newRotationValue;
+            using ( var rotDialog = new SetRotationValueDialog() )
+            {
+                if ( rotDialog.ShowDialog() != DialogResult.OK )
+                    return;
+                rot = rotDialog.Result.Rotation;
+                newRotationValue = Quaternion.CreateFromYawPitchRoll( rot.Y, rot.X, rot.Z );
+
+                var model = (ModelPack)ModelEditorTreeView.TopNode.Data;
+                model.Model.Nodes.First().Rotation = newRotationValue;
+            }
+        }
+
         private void HandleAnimationLoadExternalToolStripMenuItemClick( object sender, EventArgs e )
         {
             var filePath = SelectFileToOpen( ModuleFilterGenerator.GenerateFilter( FormatModuleUsageFlags.Import, typeof( AnimationPack ),

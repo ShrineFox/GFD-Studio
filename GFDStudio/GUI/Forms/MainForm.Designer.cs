@@ -56,6 +56,9 @@ namespace GFDStudio.GUI.Forms
             retainTexNameToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             retainColorValuesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             useDarkThemeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            metaphorSaveReplacedTexturesExternallyToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            compressAnimationKeyframesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            catherineFullBodySupportToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             mContentPanel = new System.Windows.Forms.Panel();
             tabControl1 = new MetroSetTabControl();
             tabPage1 = new MetroSetSetTabPage();
@@ -71,9 +74,7 @@ namespace GFDStudio.GUI.Forms
             splitContainer_RightSide = new System.Windows.Forms.SplitContainer();
             panel_PropertyGridContainer = new System.Windows.Forms.Panel();
             mPropertyGrid = new System.Windows.Forms.PropertyGrid();
-            metaphorSaveReplacedTexturesExternallyToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            compressAnimationKeyframesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            catherineFullBodySupportToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            rotateRootNodeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             mMainMenuStrip.SuspendLayout();
             tabControl1.SuspendLayout();
             tabPage1.SuspendLayout();
@@ -168,7 +169,7 @@ namespace GFDStudio.GUI.Forms
             // toolsToolStripMenuItem
             // 
             toolsToolStripMenuItem.AutoSize = false;
-            toolsToolStripMenuItem.DropDownItems.AddRange( new System.Windows.Forms.ToolStripItem[] { makeRelativeToolStripMenuItem, rescaleAnimationPacksInDirectoryToolStripMenuItem, convertAnimationsToP5InDirectoryToolStripMenuItem, massCompressAnimationKeyframesToolStripMenuItem, convertMaterialInDirectoryToolStripMenuItem, copyP5SplitGAPToMultipleModelsInDirectoryToolStripMenuItem, MassExportTexturesToolStripMenuItem, MassReplaceTexturesToolStripMenuItem } );
+            toolsToolStripMenuItem.DropDownItems.AddRange( new System.Windows.Forms.ToolStripItem[] { makeRelativeToolStripMenuItem, rescaleAnimationPacksInDirectoryToolStripMenuItem, convertAnimationsToP5InDirectoryToolStripMenuItem, massCompressAnimationKeyframesToolStripMenuItem, convertMaterialInDirectoryToolStripMenuItem, copyP5SplitGAPToMultipleModelsInDirectoryToolStripMenuItem, MassExportTexturesToolStripMenuItem, MassReplaceTexturesToolStripMenuItem, rotateRootNodeToolStripMenuItem } );
             toolsToolStripMenuItem.Name = "toolsToolStripMenuItem";
             toolsToolStripMenuItem.Size = new System.Drawing.Size( 58, 24 );
             toolsToolStripMenuItem.Text = "Tools";
@@ -196,15 +197,15 @@ namespace GFDStudio.GUI.Forms
             convertAnimationsToP5InDirectoryToolStripMenuItem.Size = new System.Drawing.Size( 421, 26 );
             convertAnimationsToP5InDirectoryToolStripMenuItem.Text = "Convert P5R animations to P5 in directory";
             convertAnimationsToP5InDirectoryToolStripMenuItem.Click +=  HandleConvertAnimationsToolStripMenuItemClick ;
-            //
+            // 
             // massCompressAnimationKeyframesToolStripMenuItem
-            //
+            // 
             massCompressAnimationKeyframesToolStripMenuItem.AutoSize = false;
             massCompressAnimationKeyframesToolStripMenuItem.Name = "massCompressAnimationKeyframesToolStripMenuItem";
             massCompressAnimationKeyframesToolStripMenuItem.Size = new System.Drawing.Size( 421, 26 );
             massCompressAnimationKeyframesToolStripMenuItem.Text = "Mass Compress Animation Keyframes";
             massCompressAnimationKeyframesToolStripMenuItem.Click +=  HandleMassCompressAnimationKeyframesToolStripMenuItemClick ;
-            //
+            // 
             // convertMaterialInDirectoryToolStripMenuItem
             // 
             convertMaterialInDirectoryToolStripMenuItem.AutoSize = false;
@@ -275,6 +276,34 @@ namespace GFDStudio.GUI.Forms
             useDarkThemeToolStripMenuItem.Size = new System.Drawing.Size( 459, 26 );
             useDarkThemeToolStripMenuItem.Text = "Use Dark Theme";
             useDarkThemeToolStripMenuItem.CheckedChanged +=  handleDarkThemeCheckedChanged ;
+            // 
+            // metaphorSaveReplacedTexturesExternallyToolStripMenuItem
+            // 
+            metaphorSaveReplacedTexturesExternallyToolStripMenuItem.Checked = true;
+            metaphorSaveReplacedTexturesExternallyToolStripMenuItem.CheckOnClick = true;
+            metaphorSaveReplacedTexturesExternallyToolStripMenuItem.CheckState = System.Windows.Forms.CheckState.Checked;
+            metaphorSaveReplacedTexturesExternallyToolStripMenuItem.Name = "metaphorSaveReplacedTexturesExternallyToolStripMenuItem";
+            metaphorSaveReplacedTexturesExternallyToolStripMenuItem.Size = new System.Drawing.Size( 459, 26 );
+            metaphorSaveReplacedTexturesExternallyToolStripMenuItem.Text = "(Metaphor) Save replaced textures externally";
+            metaphorSaveReplacedTexturesExternallyToolStripMenuItem.CheckedChanged +=  handleSaveReplacedTexturesExternally ;
+            // 
+            // compressAnimationKeyframesToolStripMenuItem
+            // 
+            compressAnimationKeyframesToolStripMenuItem.AutoSize = false;
+            compressAnimationKeyframesToolStripMenuItem.CheckOnClick = true;
+            compressAnimationKeyframesToolStripMenuItem.Name = "compressAnimationKeyframesToolStripMenuItem";
+            compressAnimationKeyframesToolStripMenuItem.Size = new System.Drawing.Size( 459, 26 );
+            compressAnimationKeyframesToolStripMenuItem.Text = "Auto Compress imported Animation Keyframes";
+            compressAnimationKeyframesToolStripMenuItem.CheckedChanged +=  handleCompressAnimationKeyframesChanged ;
+            // 
+            // catherineFullBodySupportToolStripMenuItem
+            // 
+            catherineFullBodySupportToolStripMenuItem.AutoSize = false;
+            catherineFullBodySupportToolStripMenuItem.CheckOnClick = true;
+            catherineFullBodySupportToolStripMenuItem.Name = "catherineFullBodySupportToolStripMenuItem";
+            catherineFullBodySupportToolStripMenuItem.Size = new System.Drawing.Size( 459, 26 );
+            catherineFullBodySupportToolStripMenuItem.Text = "Catherine Full Body support";
+            catherineFullBodySupportToolStripMenuItem.CheckedChanged +=  handleCatherineFullBodySupportCheckedChanged ;
             // 
             // mContentPanel
             // 
@@ -555,36 +584,13 @@ namespace GFDStudio.GUI.Forms
             mPropertyGrid.ViewBorderColor = System.Drawing.Color.FromArgb( 30, 30, 30 );
             mPropertyGrid.ViewForeColor = System.Drawing.Color.Silver;
             // 
-            // metaphorSaveReplacedTexturesExternallyToolStripMenuItem
+            // rotateRootNodeToolStripMenuItem
             // 
-            metaphorSaveReplacedTexturesExternallyToolStripMenuItem.Checked = true;
-            metaphorSaveReplacedTexturesExternallyToolStripMenuItem.CheckOnClick = true;
-            metaphorSaveReplacedTexturesExternallyToolStripMenuItem.CheckState = System.Windows.Forms.CheckState.Checked;
-            metaphorSaveReplacedTexturesExternallyToolStripMenuItem.Name = "metaphorSaveReplacedTexturesExternallyToolStripMenuItem";
-            metaphorSaveReplacedTexturesExternallyToolStripMenuItem.Size = new System.Drawing.Size( 366, 22 );
-            metaphorSaveReplacedTexturesExternallyToolStripMenuItem.Text = "(Metaphor) Save replaced textures externally";
-            metaphorSaveReplacedTexturesExternallyToolStripMenuItem.CheckedChanged += handleSaveReplacedTexturesExternally;
-            //
-            // catherineFullBodySupportToolStripMenuItem
-            //
-            catherineFullBodySupportToolStripMenuItem.AutoSize = false;
-            catherineFullBodySupportToolStripMenuItem.Checked = false;
-            catherineFullBodySupportToolStripMenuItem.CheckOnClick = true;
-            catherineFullBodySupportToolStripMenuItem.Name = "catherineFullBodySupportToolStripMenuItem";
-            catherineFullBodySupportToolStripMenuItem.Size = new System.Drawing.Size( 459, 26 );
-            catherineFullBodySupportToolStripMenuItem.Text = "Catherine Full Body support";
-            catherineFullBodySupportToolStripMenuItem.CheckedChanged += handleCatherineFullBodySupportCheckedChanged;
-            //
-            // compressAnimationKeyframesToolStripMenuItem
-            //
-            compressAnimationKeyframesToolStripMenuItem.AutoSize = false;
-            compressAnimationKeyframesToolStripMenuItem.Checked = false;
-            compressAnimationKeyframesToolStripMenuItem.CheckOnClick = true;
-            compressAnimationKeyframesToolStripMenuItem.Name = "compressAnimationKeyframesToolStripMenuItem";
-            compressAnimationKeyframesToolStripMenuItem.Size = new System.Drawing.Size( 459, 26 );
-            compressAnimationKeyframesToolStripMenuItem.Text = "Auto Compress imported Animation Keyframes";
-            compressAnimationKeyframesToolStripMenuItem.CheckedChanged += handleCompressAnimationKeyframesChanged;
-            //
+            rotateRootNodeToolStripMenuItem.Name = "rotateRootNodeToolStripMenuItem";
+            rotateRootNodeToolStripMenuItem.Size = new System.Drawing.Size( 421, 26 );
+            rotateRootNodeToolStripMenuItem.Text = "Rotate Root Node";
+            rotateRootNodeToolStripMenuItem.Click +=  HandleRotateRootNodeToolStripItemClick ;
+            // 
             // MainForm
             // 
             BackgroundColor = System.Drawing.Color.FromArgb( 30, 30, 30 );
@@ -673,5 +679,6 @@ namespace GFDStudio.GUI.Forms
         private System.Windows.Forms.ToolStripMenuItem metaphorSaveReplacedTexturesExternallyToolStripMenuItem;
         public System.Windows.Forms.ToolStripMenuItem compressAnimationKeyframesToolStripMenuItem;
         public System.Windows.Forms.ToolStripMenuItem catherineFullBodySupportToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem rotateRootNodeToolStripMenuItem;
     }
 }
